@@ -91,5 +91,5 @@ This project was built as:
 
 ## Author
 
-Developed by [Your Name]  
+Developed by Sajid Akhalwaya
 Computer Science Undergraduate
