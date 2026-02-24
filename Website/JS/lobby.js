@@ -1,0 +1,119 @@
+// ======================= SOCKET.IO =======================
+const socket = io(); // connect to server
+
+// Grab DOM elements
+const backBtn = document.getElementById("backBtn");
+const playerCountEl = document.getElementById("playerCount");
+
+// Get stored room info
+const roomCode = localStorage.getItem("roomCode");
+const playerId = localStorage.getItem("playerId");
+
+// Redirect if no roomCode
+if (!roomCode || !playerId) {
+    window.location.href = "join.html";
+}
+
+// ======================= JOIN SOCKET ROOM =======================
+socket.emit("join-room", { roomCode, playerId });
+
+// Update lobby when server sends player list
+socket.on("room-update", (players) => {
+    playerCountEl.textContent = `${players.length} player(s) connected`;
+});
+socket.on("game-started", data => {
+  const me = data.players.find(p => p.id === localStorage.getItem("playerId"));
+  showOnlineGameOverlay(data); // overlay logic
+});
+// Handle host closing the room
+socket.on("room-closed", () => {
+    alert("Host closed the room. Returning to join page.");
+    localStorage.removeItem("roomCode");
+    localStorage.removeItem("playerId");
+    window.location.href = "join.html";
+});
+
+// ======================= LEAVE ROOM =======================
+
+// When player clicks back
+backBtn.addEventListener("click", async () => {
+    if (roomCode && playerId) {
+        try {
+            await fetch("/api/leave-room", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ roomCode, playerId })
+            });
+        } catch (err) {
+            console.error("Error leaving room:", err);
+        }
+    }
+
+    localStorage.removeItem("roomCode");
+    localStorage.removeItem("playerId");
+    window.location.href = "join.html";
+});
+
+// When tab/window closes
+window.addEventListener("beforeunload", () => {
+    localStorage.removeItem("roomCode");
+    localStorage.removeItem("playerId");
+
+    if (roomCode && playerId) {
+        const blob = new Blob(
+            [JSON.stringify({ roomCode, playerId })],
+            { type: "application/json" }
+        );
+        navigator.sendBeacon("/api/leave-room", blob);
+    }
+});
+function showOnlineGameOverlay(gameData) {
+        const overlay = document.getElementById("gameOverlay");
+        const overlayText = document.getElementById("overlayText");
+        const countdownEl = document.getElementById("countdown");
+
+        const playerId = localStorage.getItem("playerId");
+        const currentPlayer = gameData.players.find(p => p.id === playerId);
+
+        if (!overlay || !overlayText) {
+            console.error("Overlay elements missing from DOM");
+            return;
+        }
+
+        if (!currentPlayer) {
+            overlayText.textContent = "Error: Could not find your player info!";
+            overlay.classList.remove("hidden");
+            return;
+        }
+
+        overlay.classList.remove("hidden");
+
+        // STEP 1 — Show pass screen first
+        overlayText.classList.remove("role-text");
+        countdownEl.style.display = "none";
+        overlayText.textContent = "Tap to reveal your role";
+
+        overlay.onclick = () => {
+            overlay.onclick = null;
+
+            // STEP 2 — Show word / role
+            overlayText.classList.add("role-text");
+
+            if (currentPlayer.role === "imposter") {
+                overlayText.innerHTML = `
+                    <div>You are the <strong>IMPOSTER</strong></div>
+                    <div>Hint: ${currentPlayer.hint || "No hint available"}</div>
+                `;
+            } else {
+                overlayText.innerHTML = `
+                    <div>Word: <strong>${gameData.word}</strong></div>
+                `;
+            }
+
+            // STEP 3 — Click again
+            overlay.onclick = () => {
+                overlay.onclick = null;
+                overlay.classList.add("hidden");
+            };
+        };
+    }

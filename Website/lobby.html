@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Imposter Game</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+<div id="gameOverlay" class="game-overlay hidden">
+  <div id="overlayContent" class="overlay-content">
+    <h1 id="overlayText">First player take the screen</h1>
+    <div id="countdown" class="countdown">5</div>
+  </div>
+</div>
+  <div class="phone-container">
+    <div class="card">
+
+      <div class="title-section">
+        <h1>Odd One out Game</h1>
+        <p class="subtitle">Find the imposter.</p>
+      </div>
+
+      <div class="button-group">
+        <p>Players: <span id="playerCount"></span></p>
+        <p>Waiting on host to start game...</p>
+        <button id="backBtn" class="main-btn secondary">Back</button>
+      </div>
+
+    </div>
+  </div>
+  <script src="/socket.io/socket.io.js"></script>
+  <script src="/JS/lobby.js"></script>
+</body>
+</html>

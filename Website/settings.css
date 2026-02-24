@@ -1,0 +1,174 @@
+/* GLOBAL RESET */
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+  font-family: 'Arial', Helvetica, sans-serif;
+}
+
+body {
+  background-color: #111;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+/* PHONE CONTAINER */
+.phone-container {
+  width: 390px;
+  height: 780px;
+  background-color: #f5f5f5;
+  border-radius: 30px;
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+  overflow-y: auto;
+}
+
+/* CARD */
+.card {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* SECTION TITLE */
+.section-title {
+  font-size: 28px;
+  font-weight: 800;
+  text-align: center;
+  margin-bottom: 20px;
+}
+
+/* SETTINGS CARD */
+.settings-card {
+  background-color: #ffffff;
+  border-radius: 15px;
+  padding: 15px 20px;
+  margin-bottom: 15px;
+  border: 1px solid #ccc;
+  width: 100%;
+}
+
+.card-title {
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: #333;
+}
+
+/* FORM GROUP */
+.form-group {
+  display: flex;
+  flex-direction: column;
+  margin-bottom: 10px;
+}
+
+.form-group label {
+  font-weight: bold;
+  font-size: 14px;
+  margin-bottom: 5px;
+}
+
+.form-group select {
+  padding: 8px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.form-group select:hover {
+  background-color: #eaeaea;
+}
+
+/* BUTTON GROUP */
+.button-group {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-top: 15px;
+  width: 100%;
+  align-items: center;
+}
+
+/* MAIN BUTTONS */
+.main-btn {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 70%;
+  max-width: 220px;
+  padding: 12px 0;
+  font-size: 16px;
+  font-weight: bold;
+  border-radius: 10px;
+  border: none;
+  cursor: pointer;
+  background-color: #2ecc71;
+  color: #fff;
+  box-shadow: 0 4px 6px rgba(0,0,0,0.15);
+  transition: all 0.2s ease;
+}
+
+.main-btn:hover {
+  background-color: #27ae60;
+  transform: translateY(-1px);
+  box-shadow: 0 5px 8px rgba(0,0,0,0.2);
+}
+
+.main-btn.secondary {
+  background-color: #f0f0f0;
+  color: #333;
+}
+
+.main-btn.secondary:hover {
+  background-color: #e0e0e0;
+}
+
+/* FULL SCREEN OVERLAY */
+.game-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background-color: #000;
+  color: #fff;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  text-align: center;
+  z-index: 999;
+}
+
+.hidden {
+  display: none;
+}
+
+.overlay-content h1 {
+  font-size: 24px;
+  margin-bottom: 20px;
+}
+
+.countdown {
+  font-size: 60px;
+  font-weight: bold;
+  animation: flash 1s infinite;
+}
+
+@keyframes flash {
+  0% { opacity: 1; }
+  50% { opacity: 0.3; }
+  100% { opacity: 1; }
+}
+/* Blur style for disabled select */
+.disabled-select {
+  opacity: 0.5;
+  pointer-events: none; /* makes it unclickable */
+}

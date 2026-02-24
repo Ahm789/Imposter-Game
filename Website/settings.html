@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Room</title>
+  <link rel="stylesheet" href="settings.css" />
+</head>
+<body>
+
+  <div class="phone-container">
+    <div class="card host-card">
+
+      <!-- Title -->
+      <h2 class="section-title">Game Settings</h2>
+
+      <!-- Game Settings Card -->
+      <div class="settings-card">
+        <h3 class="card-title">General Settings</h3>
+
+        <div class="form-group">
+          <label for="genre">Genre</label>
+          <select id="genre">
+            <option>General</option>
+            <option>Football</option>
+            <option>Music</option>
+            <option>Movies</option>
+            <option>VideoGames</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="ageRange">Age Range</label>
+          <select id="ageRange">
+            <option>All</option>
+            <option>6-12</option>
+            <option>13-17</option>
+            <option>18-25</option>
+            <option>26-40</option>
+            <option>40+</option>
+          </select>
+        </div>
+      </div>
+
+      <!-- Player Settings Card -->
+      <div class="settings-card">
+        <h3 class="card-title">Player Settings</h3>
+
+        <div class="form-group">
+          <label for="players">Number of Players</label>
+          <select id="players">
+            <option>3</option>
+            <option>4</option>
+            <option>5</option>
+            <option>6</option>
+            <option>7</option>
+            <option>8</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="imposters">Number of Imposters</label>
+          <select id="imposters">
+            <option>0</option>
+            <option>1</option>
+            <option>2</option>
+          </select>
+        </div>
+        <div class="form-group">
+          <label for="imposters">Randomly Select No Imposters</label>
+          <select id="zimposters">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="hintToggle">Hint for Imposter</label>
+          <select id="hintToggle">
+            <option>Yes</option>
+            <option>No</option>
+          </select>
+        </div>
+        
+        <div class="form-group">
+          <label for="difficulty">Imposter Difficulty</label>
+          <select id="difficulty">
+            <option>Easy</option>
+            <option>Medium</option>
+            <option>Hard</option>
+          </select>
+        </div>
+
+      </div>
+
+      <!-- Buttons -->
+      <div class="button-group">
+        <button id="backBtn" class="main-btn secondary">Back</button>
+      </div>
+
+    </div>
+  </div>
+
+<script>
+    window.addEventListener("load", () => {
+    const hintToggle = document.getElementById("hintToggle");
+    const difficulty = document.getElementById("difficulty");
+
+    // Function to update difficulty state
+    function updateDifficultyState() {
+        if (hintToggle.value === "No") {
+        difficulty.classList.add("disabled-select");
+        difficulty.disabled = true; // prevents interaction
+        } else {
+        difficulty.classList.remove("disabled-select");
+        difficulty.disabled = false;
+        }
+    }
+    if(localStorage.getItem("onlineMode") === "true") {
+        document.getElementById("players").classList.add("hidden");
+        document.querySelector("label[for='players']").classList.add("hidden");
+    }
+    // Initial check on load
+    updateDifficultyState();
+
+    // Listen for changes
+    hintToggle.addEventListener("change", () => {
+        updateDifficultyState();
+    });
+
+    // Load saved settings from localStorage
+    document.getElementById("players").value = localStorage.getItem("players") || "4";
+    document.getElementById("imposters").value = localStorage.getItem("imposters") || "1";
+    document.getElementById("zimposters").value = localStorage.getItem("zimposters") || "No";
+    document.getElementById("difficulty").value = localStorage.getItem("difficulty") || "Medium";
+    document.getElementById("hintToggle").value = localStorage.getItem("hintToggle") || "Yes";
+    document.getElementById("genre").value = localStorage.getItem("genre") || "General";
+    document.getElementById("ageRange").value = localStorage.getItem("ageRange") || "All";
+
+    // Make sure state is correct after loading saved value
+    updateDifficultyState();
+    });
+
+
+    // When clicking back/start game, save settings
+        document.getElementById("backBtn").addEventListener("click", () => {
+        // Save settings
+        localStorage.setItem("players", document.getElementById("players").value);
+        localStorage.setItem("imposters", document.getElementById("imposters").value);
+        localStorage.setItem("zimposters", document.getElementById("zimposters").value);
+        localStorage.setItem("difficulty", document.getElementById("difficulty").value);
+        localStorage.setItem("hintToggle", document.getElementById("hintToggle").value);
+        localStorage.setItem("genre", document.getElementById("genre").value);
+        localStorage.setItem("ageRange", document.getElementById("ageRange").value);
+
+        // Determine which page to go back to
+        const prevPage = localStorage.getItem("previousPage") || "game.html";
+        window.location.href = prevPage;
+    });
+
+</script>
+
+
+</body>
+</html>
