@@ -252,7 +252,7 @@ function startLocalGame() {
     }
   });
 }
-
+const isVotingPhaseShown = false; // flag to prevent multiple alerts
 // Online game logic
 function startOnlineGame() {
     const socket = io(); // connect to server
@@ -263,8 +263,9 @@ function startOnlineGame() {
     const startBtn = document.getElementById("startBtn");
     const backBtn = document.getElementById("backBtn");
 
-    const roomCode = localStorage.getItem("roomCode");
+    const roomCode = sessionStorage.getItem("roomCode");
     const hostId = localStorage.getItem("hostId"); // host's ID
+    const hostName = localStorage.getItem("hostName");
 
     // Redirect if not in a room
     if (!roomCode || !hostId) {
@@ -275,7 +276,7 @@ function startOnlineGame() {
     // Show lobby info
     lobbyInfoEl.classList.remove("hidden");
     roomDisplayEl.textContent = roomCode;
-    console.log("Joined room:", roomCode, "as host:", hostId);
+    console.log("Joined room:", roomCode, "as host:", hostId, "Host Name:", hostName);
 
     // ==================== SOCKET.IO ====================
     // Join room on server
@@ -289,7 +290,7 @@ function startOnlineGame() {
     // If host closed the room (from another tab), redirect
     socket.on("room-closed", () => {
         alert("Host closed the room. Returning to create page.");
-        localStorage.removeItem("roomCode");
+        sessionStorage.removeItem("roomCode");
         localStorage.removeItem("hostId");
         window.location.href = "create.html";
     });
@@ -311,7 +312,7 @@ function startOnlineGame() {
             }
         }
 
-        localStorage.removeItem("roomCode");
+        sessionStorage.removeItem("roomCode");
         localStorage.removeItem("hostId");
         window.location.href = "create.html";
     });
@@ -328,14 +329,15 @@ function startOnlineGame() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          roomCode: localStorage.getItem("roomCode"),
+          roomCode: sessionStorage.getItem("roomCode"),
           hostId: hostId,
           settings: {
             imposterCount: localStorage.getItem("imposters"),
             randomImposters: localStorage.getItem("zimposters"),
             difficulty: localStorage.getItem("difficulty"),
             hintToggle: localStorage.getItem("hintToggle"),
-            genre: localStorage.getItem("genre")
+            genre: localStorage.getItem("genre"),
+            voting: localStorage.getItem("voting") === "Yes"
           }
         })
       });
@@ -354,7 +356,9 @@ function startOnlineGame() {
         console.error("Failed to start game:", err);
       });
     });
+    // ---------------- Client-side (players) ----------------
 
+          
     // Listen for server sending the actual game data
     socket.on("game-started", (data) => {
       window.requestAnimationFrame(() => {
@@ -405,10 +409,28 @@ function startOnlineGame() {
             }
 
             // STEP 3 — Click again //NEXT STEPS CAN CHANGE
-            overlay.onclick = () => {
-                overlay.onclick = null;
-                window.location.href = "end.html"; // For now, just go to end screen after viewing role
-            };
+            // -------------------- Host click triggers next phase --------------------
+            overlay.onclick = async () => {
+              overlay.onclick = null;  // prevent double-click
+              overlay.classList.add("hidden");
+
+              try {
+                  const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
+                  const data = await res.json();
+
+                  // Redirect based on server voting status
+                  if (data.votingEnabled) {
+                      window.location.href = "voting.html";
+                  } else {
+                    alert("No voting phase enabled. Ending game: Room Code " + roomCode);
+                      window.location.href = "end.html";
+                  }
+              } catch (err) {
+                  console.error("Failed to check voting:", err);
+                  // fallback
+                  window.location.href = "end.html";
+              }
+          };
         };
     }
 }

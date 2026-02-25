@@ -32,7 +32,6 @@ socket.on("room-closed", () => {
     localStorage.removeItem("playerId");
     window.location.href = "join.html";
 });
-
 // ======================= LEAVE ROOM =======================
 
 // When player clicks back
@@ -111,9 +110,27 @@ function showOnlineGameOverlay(gameData) {
             }
 
             // STEP 3 — Click again
-            overlay.onclick = () => {
-                overlay.onclick = null;
+            overlay.onclick = async () => {
+                overlay.onclick = null;  // prevent double-click
                 overlay.classList.add("hidden");
+
+                try {
+                    const roomCode = localStorage.getItem("roomCode");
+                    const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
+                    const data = await res.json();
+                    alert(roomCode);
+
+                    // Redirect based on server voting status
+                    if (data.votingEnabled) {
+                        window.location.href = "voting.html";
+                    } else {
+                        overlay.classList.add("hidden");
+                    }
+                } catch (err) {
+                    console.error("Failed to check voting:", err);
+                    // fallback
+                    window.location.href = "end.html";
+                }
             };
         };
     }

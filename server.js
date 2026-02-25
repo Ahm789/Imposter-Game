@@ -32,7 +32,60 @@ io.on("connection", (socket) => {
       io.to(roomCode).emit("room-update", rooms[roomCode].players);
     }
   });
+  socket.on("next-phase", ({ roomCode, playerId }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
 
+    if (room.hostId !== playerId) return; // 🔒 authority check
+
+    if (room.state === "playing" && room.settings.votingEnabled) {
+      room.state = "voting";
+    } else if (room.state === "voting") {
+      room.state = "results";
+    } else if (room.state === "results") {
+      room.state = "ended";
+    }
+    // Notify everyone of the new state
+    io.to(roomCode).emit("phase-changed", { state: room.state });
+  });
+  // ---------------- Voting ----------------
+    socket.on("submit-vote", ({ roomCode, playerId, voteTarget }) => {
+      const room = rooms[roomCode];
+      if (!room || !room.settings.votingEnabled) return;
+
+      room.votes[playerId] = voteTarget;
+
+      // Notify host of current votes
+      io.to(room.hostSocketId).emit("vote-update", {
+        totalVotes: Object.keys(room.votes).length,
+        totalPlayers: room.players.length
+      });
+
+      // DO NOT automatically advance to results!
+      // Players just stay in voting until host triggers next-phase
+    });
+    socket.on("host-advance-results", ({ roomCode, playerId }) => {
+      const room = rooms[roomCode];
+      console.log("Host requested advancing to results for room:", roomCode, playerId);
+      if (!room) return;
+
+      // 🔒 Only host can trigger
+      if (room.hostId !== playerId) return;
+
+      const totalPlayers = room.players.length;
+      const totalVotes = Object.keys(room.votes || {}).length;
+      
+      if (totalVotes === totalPlayers) {
+        room.state = "results";
+        console.log("Votes:", totalVotes, "/", totalPlayers);
+        io.to(roomCode).emit("phase-changed", { state: "results" });
+      } else {
+        socket.emit("not-all-voted", {
+          totalVotes,
+          totalPlayers
+        });
+      }
+    });
   socket.on("disconnecting", () => {
     // Remove socket from roomSockets
     for (const roomCode of socket.rooms) {
@@ -59,7 +112,7 @@ app.post("/api/create-room", (req, res) => {
     settings: { imposters: 1}
   };
 
-  res.json({ roomCode, hostId });
+  res.json({ roomCode, hostId ,name});
 });
 
 // Join Room
@@ -67,13 +120,23 @@ app.post("/api/join-room", (req, res) => {
   const { name, roomCode } = req.body;
   if (!rooms[roomCode]) return res.json({ error: "Room not found" });
 
+  let uniqueName = name;
+  const existingNames = rooms[roomCode].players.map(p => p.name);
+  let counter = 1;
+
+  // Keep appending a number until it's unique
+  while (existingNames.includes(uniqueName)) {
+    uniqueName = `${name} (${counter})`;
+    counter++;
+  }
+
   const playerId = crypto.randomUUID();
-  rooms[roomCode].players.push({ id: playerId, name });
+  rooms[roomCode].players.push({ id: playerId, name: uniqueName });
 
   // Notify everyone in room about new player
   io.to(roomCode).emit("room-update", rooms[roomCode].players);
 
-  res.json({ success: true, playerId });
+  res.json({ success: true, playerId, uniqueName });
 });
 
 // Leave Room (non-host)
@@ -121,6 +184,9 @@ app.post("/api/start-game", (req, res) => {
   const hintToggle = settings.hintToggle || "Yes";
   const genre = settings.genre || "General";
 
+  const votingEnabled = settings.voting || false;
+  room.settings.votingEnabled = votingEnabled;
+
   // Use your genreManager (or similar) to get a random word
   const selectedWordObj = genreManager.getRandomWord(genre);
 
@@ -157,6 +223,8 @@ app.post("/api/start-game", (req, res) => {
     }
   });
 
+  room.state = "playing";
+  room.votes = {};
   // Emit game start to everyone in the room via Socket.IO
   io.to(roomCode).emit("game-started", {
     word: selectedWordObj.word,
@@ -167,8 +235,39 @@ app.post("/api/start-game", (req, res) => {
       hint: p.hint
     }))
   });
-
+  if (votingEnabled) {
+    room.state = "voting";
+    room.votes = {}; // reset votes
+    // Emit phase change to everyone immediately
+    io.to(roomCode).emit("phase-changed", { state: "voting" });
+  }
   res.json({ success: true });
+});
+// Check if voting is enabled for this room
+app.get("/api/check-voting", (req, res) => {
+  const { roomCode } = req.query;
+  if (!roomCode || !rooms[roomCode]) return res.json({ votingEnabled: false });
+
+  const room = rooms[roomCode];
+  res.json({ votingEnabled: room.settings.votingEnabled || false });
+});
+// Get all players in a room
+app.get("/api/players", (req, res) => {
+  const { roomCode } = req.query;
+
+  if (!roomCode || !rooms[roomCode]) {
+    return res.json({ error: "Room not found" });
+  }
+
+  const room = rooms[roomCode];
+
+  // Only send safe data (no roles, no words)
+  const playerList = room.players.map(p => ({
+    id: p.id,
+    name: p.name
+  }));
+
+  res.json({ players: playerList });
 });
 // ===================== START SERVER =====================
 http.listen(PORT, () => {

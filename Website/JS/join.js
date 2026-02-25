@@ -24,6 +24,8 @@ document.getElementById("joinBtn").addEventListener("click", () => {
       // Store the room code for later
       localStorage.setItem("roomCode", roomCodeInput);
       localStorage.setItem("playerId", data.playerId);
+      localStorage.setItem("playerName", data.uniqueName);
+      alert(`Joined room ${roomCodeInput} as ${data.uniqueName}`);
       // Redirect to lobby or game page
       window.location.href = "lobby.html";
     })

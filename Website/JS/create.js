@@ -17,11 +17,12 @@ document.getElementById("hostBtn").addEventListener("click", () => {
     .then(data => {
       if(data.error) return alert(data.error);
       // Store the room code for later
-      localStorage.setItem("roomCode", data.roomCode);
+      sessionStorage.setItem("roomCode", data.roomCode);
       // Redirect to lobby or game page
       localStorage.setItem("onlineMode", "true");
       window.location.href = "game.html";
       localStorage.setItem("hostId", data.hostId);
+      localStorage.setItem("hostName", data.name);
     })
     .catch(err => console.error("Error creating room:", err));
 });
