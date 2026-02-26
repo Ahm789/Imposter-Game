@@ -3,59 +3,88 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Imposter Game - Host Voting</title>
+  <title>Odd One Out - Results</title>
   <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-
-  <div id="gameOverlay" class="game-overlay hidden">
-    <div id="overlayContent" class="overlay-content">
-      <h1 id="overlayText">Voting Phase</h1>
-      <div id="countdown" class="countdown">5</div>
-    </div>
-  </div>
 
   <div class="phone-container">
     <div class="card">
 
       <div class="title-section">
         <h1>Odd One Out Game</h1>
-        <p class="subtitle" id="phaseTitle">Voting Phase - Host View</p>
-        <p class="subtitle" id = "userName"></p>
+        <p class="subtitle">Results</p>
+        <p class="subtitle" id="userName"></p>
       </div>
 
-      <div class="button-group">
-        <p>Players already voted: <span id="playerCount"></span></p>
+      <!-- =========================
+           NON-IMPOSTER: IMPOSTER WINS
+      ========================== -->
+      <section id="imposterWonPlayers" class="hidden">
+        <h2>Imposter Wins</h2>
+        <p>
+          The imposter was <strong id="imposterName">---</strong>
+        </p>
+        <p>
+          Their hint was: <strong id="imposterHintPlayers">---</strong>
+        </p>
+        <p class="p-muted">
+          You failed to vote them out.
+        </p>
+      </section>
+
+      <!-- =========================
+           IMPOSTER VIEW: IMPOSTER WINS
+      ========================== -->
+      <section id="imposterWonSelf" class="hidden">
+        <h2>You Won 🎉</h2>
+        <p>
+          The real word was:
+        </p>
+        <p class="role-text" id="correctWord">---</p>
+      </section>
+
+      <!-- =========================
+           NON-IMPOSTER: PLAYERS WIN
+      ========================== -->
+      <section id="playersWon" class="hidden">
+        <h2>You Won 🎉</h2>
+        <p>
+          You successfully voted out the imposter!
+        </p>
+        <p>
+          Their hint was: <strong id="imposterHint">---</strong>
+        </p>
+        <p class="p-muted">
+          Well played.
+        </p>
+      </section>
+
+      <!-- =========================
+           IMPOSTER VIEW: IMPOSTER LOSES
+      ========================== -->
+      <section id="imposterLost" class="hidden">
+        <h2>You Lost</h2>
+        <p>
+          You were caught.
+        </p>
+        <p>
+          The word was:
+        </p>
+        <p class="role-text" id="correctWord">---</p>
+      </section>
+
+      <!-- =========================
+           HOST CONTROLS
+      ========================== -->
+      <div class="button-group3">
+        <button class="main-btn" id="restartBtn">Start Again</button>
+        <button id="settingsBtn" class="main-btn secondary">Change Settings</button>
+        <button id="homeBtn" class="main-btn secondary">Home</button>
       </div>
-      <!-- Player voting section -->
-      <section id="playerVoting">
-        <h2>Cast Your Vote</h2>
-        <p>Select who you think is the imposter:</p>
 
-        
-        <!-- Version 1: Dropdown -->
-        <div id="voteDropdownContainer">
-            <select id="voteDropdown">
-            <option value="">Select a player</option>
-            <!-- JS will populate options dynamically -->
-            </select>
-            <button id="submitVoteBtn" class="main-btn">Submit Your Vote</button>
-        </div>
-
-        <!-- Version 2: Buttons (hidden for now) -->
-        <div id="voteButtonContainer" style="display:none">
-          <p>Select who you think is the imposter:</p>
-          <div id="voteList" class="vote-list">
-            <!-- Buttons will populate here -->
-          </div>
-          <button id="submitVoteBtnButtons" class="main-btn">Submit Your Vote</button>
-        </div>
-        </section>
-            <button id="resultsBtn" class="main-btn">Go to results</button>
     </div>
   </div>
 
-  <script src="/socket.io/socket.io.js"></script>
-  <script src="/JS/voting.js"></script>
 </body>
 </html>

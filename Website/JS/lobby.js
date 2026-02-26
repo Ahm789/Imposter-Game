@@ -6,7 +6,7 @@ const backBtn = document.getElementById("backBtn");
 const playerCountEl = document.getElementById("playerCount");
 
 // Get stored room info
-const roomCode = localStorage.getItem("roomCode");
+const roomCode = localStorage.getItem("proomCode");
 const playerId = localStorage.getItem("playerId");
 
 // Redirect if no roomCode
@@ -28,7 +28,7 @@ socket.on("game-started", data => {
 // Handle host closing the room
 socket.on("room-closed", () => {
     alert("Host closed the room. Returning to join page.");
-    localStorage.removeItem("roomCode");
+    localStorage.removeItem("proomCode");
     localStorage.removeItem("playerId");
     window.location.href = "join.html";
 });
@@ -48,31 +48,21 @@ backBtn.addEventListener("click", async () => {
         }
     }
 
-    localStorage.removeItem("roomCode");
+    localStorage.removeItem("proomCode");
     localStorage.removeItem("playerId");
     window.location.href = "join.html";
 });
 
 // When tab/window closes
-window.addEventListener("beforeunload", () => {
-    localStorage.removeItem("roomCode");
-    localStorage.removeItem("playerId");
-
-    if (roomCode && playerId) {
-        const blob = new Blob(
-            [JSON.stringify({ roomCode, playerId })],
-            { type: "application/json" }
-        );
-        navigator.sendBeacon("/api/leave-room", blob);
-    }
-});
 function showOnlineGameOverlay(gameData) {
         const overlay = document.getElementById("gameOverlay");
         const overlayText = document.getElementById("overlayText");
         const countdownEl = document.getElementById("countdown");
 
+
         const playerId = localStorage.getItem("playerId");
         const currentPlayer = gameData.players.find(p => p.id === playerId);
+        localStorage.setItem("role", currentPlayer.role); // Store role for end screen
 
         if (!overlay || !overlayText) {
             console.error("Overlay elements missing from DOM");
@@ -115,10 +105,10 @@ function showOnlineGameOverlay(gameData) {
                 overlay.classList.add("hidden");
 
                 try {
-                    const roomCode = localStorage.getItem("roomCode");
+                    const roomCode = localStorage.getItem("proomCode");
                     const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
                     const data = await res.json();
-                    alert(roomCode);
+                    localStorage.setItem("proomCode", roomCode);
 
                     // Redirect based on server voting status
                     if (data.votingEnabled) {

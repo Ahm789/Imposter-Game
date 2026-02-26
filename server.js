@@ -76,9 +76,50 @@ io.on("connection", (socket) => {
       const totalVotes = Object.keys(room.votes || {}).length;
       
       if (totalVotes === totalPlayers) {
+        const voteCounts = {};
+
+        for (const voteTarget of Object.values(room.votes)) {
+          voteCounts[voteTarget] = (voteCounts[voteTarget] || 0) + 1;
+        }
+
+        const imposter = room.players.find(p => p.role === "imposter");
+        const imposterVotes = voteCounts[imposter.id] || 0;
+
+        const highestVotes = Math.max(...Object.values(voteCounts));
+
+        const playersWithHighest = Object.entries(voteCounts)
+          .filter(([_, count]) => count === highestVotes)
+          .map(([id]) => id);
+
+        let resultType;
+
+        if (playersWithHighest.length > 1 && playersWithHighest.includes(imposter.id)) {
+          resultType = "draw";
+        } 
+        else if (imposterVotes === highestVotes) {
+          resultType = "players-win";
+        } 
+        else {
+          resultType = "imposter-win";
+        }
+
         room.state = "results";
-        console.log("Votes:", totalVotes, "/", totalPlayers);
-        io.to(roomCode).emit("phase-changed", { state: "results" });
+        room.results = {
+          resultType,
+          imposterName: imposter.name,
+          imposterHint: imposter.hint,
+          correctWord: room.word
+        };
+
+        io.to(roomCode).emit("phase-changed", {
+          state: "results",
+          results: {
+            resultType,
+            imposterName: imposter.name,
+            imposterHint: imposter.hint,
+            correctWord: room.word
+          }
+        });
       } else {
         socket.emit("not-all-voted", {
           totalVotes,
@@ -225,6 +266,7 @@ app.post("/api/start-game", (req, res) => {
 
   room.state = "playing";
   room.votes = {};
+  room.word = selectedWordObj.word;
   // Emit game start to everyone in the room via Socket.IO
   io.to(roomCode).emit("game-started", {
     word: selectedWordObj.word,
@@ -249,7 +291,20 @@ app.get("/api/check-voting", (req, res) => {
   if (!roomCode || !rooms[roomCode]) return res.json({ votingEnabled: false });
 
   const room = rooms[roomCode];
-  res.json({ votingEnabled: room.settings.votingEnabled || false });
+  res.json({ votingEnabled: room.settings.votingEnabled || false});
+});
+app.get("/api/get-results", (req, res) => {
+  const { roomCode } = req.query;
+
+  const room = rooms[roomCode];
+  if (!room || !room.results) {
+    return res.json({ success: false });
+  }
+
+  res.json({
+    success: true,
+    results: room.results
+  });
 });
 // Get all players in a room
 app.get("/api/players", (req, res) => {

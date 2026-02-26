@@ -1,5 +1,7 @@
-document.addEventListener("DOMContentLoaded", () => {
-  const roomCode = sessionStorage.getItem("roomCode");
+window.addEventListener("load", () => {
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
   const socket = io();
   const playerName = localStorage.getItem("playerName");
   const hostName = localStorage.getItem("hostName");
@@ -20,7 +22,10 @@ document.addEventListener("DOMContentLoaded", () => {
 
   socket.on("phase-changed", ({ state }) => {
     if (state === "results") {
-      window.location.href = "results.html";
+      if (userId === hostId) {
+        window.location.href = "end.html";
+      }
+      window.location.href = "end.html";
     }
   });
 
@@ -54,7 +59,6 @@ document.addEventListener("DOMContentLoaded", () => {
 
   loadPlayers();
   async function loadPlayers() {
-        const roomCode = sessionStorage.getItem("roomCode");
 
         try {
             const res = await fetch(`/api/players?roomCode=${roomCode}`);
@@ -81,9 +85,6 @@ document.addEventListener("DOMContentLoaded", () => {
             option.textContent = player.name;
             dropdown.appendChild(option);
           }
-          option.value = player.id;
-          option.textContent = player.name;
-          dropdown.appendChild(option);
         });
         }
   // =========================

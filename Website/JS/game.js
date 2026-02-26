@@ -41,7 +41,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
 // Local game logic
 function startLocalGame() {
-    document.getElementById("backBtn").addEventListener("click", () => {
+  document.getElementById("backBtn").addEventListener("click", () => {
     window.location.href = "index.html";
   });
 
@@ -372,6 +372,7 @@ function startOnlineGame() {
 
         const hostId = localStorage.getItem("hostId");
         const currentPlayer = gameData.players.find(p => p.id === hostId);
+        localStorage.setItem("role", currentPlayer.role); // Store role for end screen
 
         if (!overlay || !overlayText) {
             console.error("Overlay elements missing from DOM");
@@ -422,7 +423,6 @@ function startOnlineGame() {
                   if (data.votingEnabled) {
                       window.location.href = "voting.html";
                   } else {
-                    alert("No voting phase enabled. Ending game: Room Code " + roomCode);
                       window.location.href = "end.html";
                   }
               } catch (err) {
