@@ -338,6 +338,24 @@ app.get("/api/players", (req, res) => {
 
   res.json({ players: playerList });
 });
+// server.js
+app.get("/api/current-game/:roomCode", (req, res) => {
+    const { roomCode } = req.params;
+    const room = rooms[roomCode];
+    if (!room) return res.json({ error: "Room not found" });
+    res.json({
+        state: room.state,
+        gameData: {
+            word: room.word,
+            players: room.players.map(p => ({
+                id: p.id,
+                role: p.role,
+                word: p.word,
+                hint: p.hint
+            }))
+        }
+    });
+});
 // ===================== START SERVER =====================
 http.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

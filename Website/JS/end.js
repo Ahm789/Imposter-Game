@@ -27,19 +27,20 @@ window.addEventListener("DOMContentLoaded", () => {
       playerCountEl.textContent = `${players.length} player(s) connected`;
   });
   document.getElementById("roomDisplay").textContent = roomCode;
-  socket.on("phase-changed", (roomstate) => {
-    console.log("Phase changed to:", roomstate.state);
+    socket.on("phase-changed", (roomstate) => {
+      console.log("Phase changed to:", roomstate.state);
 
-    if (roomstate.state === "playing") {
-      if (hostId === userId) {
-        localStorage.setItem("restart", true);
-        window.location.href = "game.html?restart=true";
-      } else {
-        window.location.href = "lobby.html";
+      if (roomstate.state === "playing") {
+        if (hostId === userId) {
+          localStorage.setItem("restart", true);
+          window.location.href = "game.html?restart=true";
+        } else {
+          localStorage.setItem("restart", true);
+          window.location.href = "lobby.html";
+        }
       }
-    }
-  });
-}
+    });
+  }
 });
 async function getgamestate() {
   const hstroomCode = sessionStorage.getItem("roomCode");

@@ -23,10 +23,10 @@ document.getElementById("joinBtn").addEventListener("click", () => {
       if(data.error) return alert(data.error);
       // Store the room code for later
       localStorage.setItem("proomCode", roomCodeInput);
+      localStorage.setItem("hostName", "")
       localStorage.setItem("playerId", data.playerId);
       localStorage.setItem("playerName", data.uniqueName);
       localStorage.setItem("onlineMode", "true");
-      alert(`Joined room ${roomCodeInput} as ${data.uniqueName}`);
       // Redirect to lobby or game page
       window.location.href = "lobby.html";
     })

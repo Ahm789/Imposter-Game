@@ -58,6 +58,7 @@ window.addEventListener("load", () => {
   // =========================
 
   loadPlayers();
+  let playersList = []; // store all players globally
   async function loadPlayers() {
 
         try {
@@ -68,7 +69,7 @@ window.addEventListener("load", () => {
             console.error(data.error);
             return;
             }
-
+            playersList = data.players; // save globally
             populateDropdown(data.players);
         } catch (err) {
             console.error("Failed to load players:", err);
@@ -96,13 +97,12 @@ window.addEventListener("load", () => {
     submitBtn.addEventListener("click", () => {
 
       const selectedVote = voteDropdown.value;
+      const selectedPlayer = playersList.find(p => p.id === selectedVote);
 
       if (!selectedVote) {
-        alert("Please select a player first.");
+        document.getElementById("voted").style.display = "block";
         return;
       }
-
-
       console.log("Submitting vote...");
       console.log("Room:", roomCode);
       console.log("Voter ID:", userName);
@@ -116,8 +116,15 @@ window.addEventListener("load", () => {
           playerId: userName,
           voteTarget: selectedVote
         });
-
-      alert(`Vote submitted for ${selectedVote}`);
+        document.getElementById("voted").style.display = "none";
+        const yourVoteContainer = document.getElementById("yourVoteContainer");
+        const yourVoteEl = document.getElementById("yourVote");
+        yourVoteEl.textContent = selectedPlayer.name;
+        yourVoteContainer.style.display = "block"; // reveal
+        submitBtn.textContent = "Vote Submitted";
+        submitBtn.disabled = true;
+        const dropdown = document.getElementById("voteDropdown");
+        dropdown.disabled = true;
     });
   }
   const voteList = document.getElementById("voteList");

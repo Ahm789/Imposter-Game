@@ -21,6 +21,16 @@ socket.emit("join-room", { roomCode, playerId });
 socket.on("room-update", (players) => {
     playerCountEl.textContent = `${players.length} player(s) connected`;
 });
+// Catch-up fetch in case the game already started
+fetch(`/api/current-game/${roomCode}`)
+  .then(res => res.json())
+  .then(data => {
+    if (data.state === "playing" && data.gameData) {
+        showOnlineGameOverlay(data.gameData);
+    }
+  })
+  .catch(err => console.error("Failed to fetch current game:", err));
+
 socket.on("game-started", data => {
   const me = data.players.find(p => p.id === localStorage.getItem("playerId"));
   showOnlineGameOverlay(data); // overlay logic
