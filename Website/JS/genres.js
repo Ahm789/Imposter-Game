@@ -65,6 +65,16 @@ class GenreManager {
   }
 
   getRandomWord(genre) {
+    // If genre is "Random", pick a real one
+    if (genre === "Random") {
+      const genres = Object.keys(this.genres);
+      genre = genres[Math.floor(Math.random() * genres.length)];
+
+      // Optional: store the chosen genre for later (like hints)
+      localStorage.setItem("Gamegenre", genre);
+      alert(genre);
+    }
+
     const words = this.genres[genre];
     if (!words) return null;
 

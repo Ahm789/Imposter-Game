@@ -70,7 +70,7 @@ io.on("connection", (socket) => {
       room.votes[playerId] = voteTarget;
 
       // Notify host of current votes
-      io.to(room.hostSocketId).emit("vote-update", {
+      io.to(roomCode).emit("vote-update", {
         totalVotes: Object.keys(room.votes).length,
         totalPlayers: room.players.length
       });
@@ -237,7 +237,12 @@ app.post("/api/start-game", (req, res) => {
   const randomImposters = settings.randomImposters || "No";
   const difficulty = (settings.difficulty || "medium").toLowerCase();
   const hintToggle = settings.hintToggle || "Yes";
-  const genre = settings.genre || "General";
+  let genre = settings.genre || "General";
+  if (genre === "Random") {
+    const genres = genreManager.getGenres();
+    genre = genres[Math.floor(Math.random() * genres.length)];
+  } 
+  console.log(genre);
 
   const votingEnabled = settings.voting || false;
   room.settings.votingEnabled = votingEnabled;

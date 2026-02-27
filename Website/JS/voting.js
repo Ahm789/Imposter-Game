@@ -28,7 +28,10 @@ window.addEventListener("load", () => {
       window.location.href = "end.html";
     }
   });
-
+  const playerCountEl = document.getElementById("playerCount");
+    socket.on("vote-update", ({ totalVotes, totalPlayers }) => {
+      playerCountEl.textContent = `${totalVotes} / ${totalPlayers}`;
+  });
   // Button emit
   advanceBtn.addEventListener("click", () => {
     // ✅ Use the already declared hostId

@@ -59,12 +59,12 @@ function startLocalGame() {
     // Load other settings
     let difficulty = (localStorage.getItem("difficulty") || "Medium").toLowerCase(); // normalize
     const hintToggle = localStorage.getItem("hintToggle") || "Yes";
-    const selectedGenre = localStorage.getItem("genre") || "General";
+    let selectedGenre = localStorage.getItem("genre") || "Random";
     const ageRange = localStorage.getItem("ageRange") || "All";
 
     // Get random word object from the genre
     selectedWordObj = genreManager.getRandomWord(selectedGenre);
-
+    selectedGenre = localStorage.getItem("Gamegenre");
     // If randomImposters is "Yes", set imposterCount to 0 randomly (50% for testing)
     if (randomImposters === "Yes") {
       const randomChance = Math.random(); // 0 → 1
