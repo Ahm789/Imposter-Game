@@ -32,22 +32,36 @@ io.on("connection", (socket) => {
       io.to(roomCode).emit("room-update", rooms[roomCode].players);
     }
   });
-  socket.on("next-phase", ({ roomCode, playerId }) => {
+  socket.on("restart-game", ({ roomCode, hostId }) => {
     const room = rooms[roomCode];
-    if (!room) return;
+    if (!room || room.hostId !== hostId) return;
 
-    if (room.hostId !== playerId) return; // 🔒 authority check
+    // Reset room state for a new round
+    room.state = "playing";
+    room.votes = {}; 
+    room.word = null; // or pick a new word if needed
 
-    if (room.state === "playing" && room.settings.votingEnabled) {
-      room.state = "voting";
-    } else if (room.state === "voting") {
-      room.state = "results";
-    } else if (room.state === "results") {
-      room.state = "ended";
-    }
-    // Notify everyone of the new state
-    io.to(roomCode).emit("phase-changed", { state: room.state });
+    // Notify everyone
+    io.to(roomCode).emit("phase-changed", { state: "playing", restart: true });
   });
+  // server-side
+    socket.on("next-phase", ({ roomCode, playerId, nextState }) => {
+      const room = rooms[roomCode];
+      if (!room) return;
+
+      if (room.hostId !== playerId) return; // only host
+
+      if (nextState) {
+        room.state = nextState;
+      } else {
+        // normal flow
+        if (room.state === "playing" && room.settings.votingEnabled) room.state = "voting";
+        else if (room.state === "voting") room.state = "results";
+        else if (room.state === "results") room.state = "ended";
+      }
+
+      io.to(roomCode).emit("phase-changed", { state: room.state });
+    });
   // ---------------- Voting ----------------
     socket.on("submit-vote", ({ roomCode, playerId, voteTarget }) => {
       const room = rooms[roomCode];

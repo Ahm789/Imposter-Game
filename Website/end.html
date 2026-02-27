@@ -21,7 +21,7 @@
            NON-IMPOSTER: IMPOSTER WINS
       ========================== -->
       <section id="imposterWonPlayers" class="hidden">
-        <h2>Imposter Wins</h2>
+        <h2 id="imposterWonPlayersTitle">Imposter Wins</h2>
         <p>
           The imposter was <strong id="imposterName">---</strong>
         </p>
@@ -37,7 +37,7 @@
            IMPOSTER VIEW: IMPOSTER WINS
       ========================== -->
       <section id="imposterWonSelf" class="hidden">
-        <h2>You Won 🎉</h2>
+        <h2 id="imposterWonSelfTitle">You Won 🎉</h2>
         <p>
           The real word was:
         </p>
@@ -79,6 +79,8 @@
       <p class="p-muted" id = "hostWait">
           Waiting on host to restart the game
       </p>
+      <p>Room Code: <span id="roomDisplay"></span></p>
+      <p>Players: <span id="playerCount"></span></p>
       <!-- =========================
            HOST CONTROLS
       ========================== -->

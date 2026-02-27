@@ -256,7 +256,6 @@ const isVotingPhaseShown = false; // flag to prevent multiple alerts
 // Online game logic
 function startOnlineGame() {
     const socket = io(); // connect to server
-
     const lobbyInfoEl = document.getElementById("lobbyInfo");
     const roomDisplayEl = document.getElementById("roomDisplay");
     const playerCountEl = document.getElementById("playerCount");
@@ -264,9 +263,9 @@ function startOnlineGame() {
     const backBtn = document.getElementById("backBtn");
 
     const roomCode = sessionStorage.getItem("roomCode");
+    const restart = localStorage.getItem("restart");
     const hostId = localStorage.getItem("hostId"); // host's ID
     const hostName = localStorage.getItem("hostName");
-
     // Redirect if not in a room
     if (!roomCode || !hostId) {
         window.location.href = "create.html";
@@ -364,6 +363,22 @@ function startOnlineGame() {
       window.requestAnimationFrame(() => {
           showOnlineGameOverlay(data);
       });
+  });
+    socket.on("connect", () => {
+      console.log("Socket connected:", socket.id);
+
+      socket.emit("join-room", { roomCode, hostId, isHost: true });
+
+      if (localStorage.getItem("restart") === "true") {
+          localStorage.removeItem("restart");
+
+          // Small delay ensures server registers the room join
+          setTimeout(() => {
+              startGame().catch(err => {
+                  console.error("Failed to restart game:", err);
+              });
+          }, 100);
+      }
   });
     function showOnlineGameOverlay(gameData) {
         const overlay = document.getElementById("gameOverlay");

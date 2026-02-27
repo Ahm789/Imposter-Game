@@ -2,11 +2,44 @@ window.addEventListener("DOMContentLoaded", () => {
   const onlineMode = localStorage.getItem("onlineMode") === "true";
   document.getElementById("hostWait").style.display = "none";
   if (!onlineMode) {
+    document.getElementById("playerCount").parentElement.style.display = "none";
+    document.getElementById("roomDisplay").parentElement.style.display = "none";
     normalend();
     return;
   }
   // ---------------- Online mode ----------------
   getgamestate();
+  if (onlineMode) {
+  const socket = io();
+
+  const playerCountEl = document.getElementById("playerCount");
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
+
+  const hostId = localStorage.getItem("hostId");
+  const playerId = localStorage.getItem("playerId");
+  const userId = hostId || playerId;
+
+  socket.emit("join-room", { roomCode, userId }); 
+
+    socket.on("room-update", (players) => {
+      playerCountEl.textContent = `${players.length} player(s) connected`;
+  });
+  document.getElementById("roomDisplay").textContent = roomCode;
+  socket.on("phase-changed", (roomstate) => {
+    console.log("Phase changed to:", roomstate.state);
+
+    if (roomstate.state === "playing") {
+      if (hostId === userId) {
+        localStorage.setItem("restart", true);
+        window.location.href = "game.html?restart=true";
+      } else {
+        window.location.href = "lobby.html";
+      }
+    }
+  });
+}
 });
 async function getgamestate() {
   const hstroomCode = sessionStorage.getItem("roomCode");
@@ -14,24 +47,58 @@ async function getgamestate() {
   const roomCode = hstroomCode || proomCode;
   let votingEnabled = false;
 
-    const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
-    const data = await res.json();
-    votingEnabled = data.votingEnabled;
-    if (votingEnabled) {
-      resultscreen();
-    } else {
-      normalend();
-    }
+  const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
+  const data = await res.json();
+  votingEnabled = data.votingEnabled;
+  if (votingEnabled) {
+    resultscreen();
+  } else {
+    normalend();
+  }
 }
 function normalend() {
+  const roomCode = sessionStorage.getItem("roomCode") || localStorage.getItem("proomCode");
+  const hostId = localStorage.getItem("hostId");
   document.getElementById("restartBtn").addEventListener("click", () => {
-    window.location.href = "game.html?restart=true";
+    const onlineMode = localStorage.getItem("onlineMode") === "true";
+    if (onlineMode){
+      const socket = io();
+      // Host wants to restart
+      socket.emit("next-phase", { roomCode, playerId: hostId, nextState: "playing" });
+    }
+    else{
+      window.location.href = "game.html?restart=true";
+    }
   });
   document.getElementById("settingsBtn").addEventListener("click", () => {
+    const onlineMode = localStorage.getItem("onlineMode") === "true";
+    if (onlineMode){
+      localStorage.setItem("previousPage", window.location.pathname);
+    }
+    else{
       localStorage.setItem("previousPage", window.location.pathname); // store current page
-    window.location.href = "settings.html";
+    }
+    
+    window.location.href = "settings.html"; // navigate after storing
   });
   document.getElementById("homeBtn").addEventListener("click", () => {
+    if (roomCode && hostId) {
+            try {
+                fetch("/api/close-room", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ roomCode,hostId })
+                }).then(res => res.json())
+                .then(data => {
+                  if(data.error) return alert(data.error);
+                });
+            } catch (err) {
+                console.error("Error leaving room:", err);
+            }
+        }
+
+        sessionStorage.removeItem("roomCode");
+        localStorage.removeItem("hostId");
     window.location.href = "index.html";
   });
 }
@@ -45,7 +112,6 @@ async function resultscreen() {
   const hostId = localStorage.getItem("hostId");
   const playerId = localStorage.getItem("playerId");
   const userId = hostId || playerId;
-  alert(`User ID: ${userId}, Host ID: ${hostId}, Player ID: ${playerId}, Room Code: ${roomCode}`);
   if (hostId == userId) {
   // Host → show everything
   document.getElementById("restartBtn").style.display = "block";
@@ -61,6 +127,16 @@ async function resultscreen() {
 
     // ---------------- Voting-enabled online ----------------
   socket.emit("join-room", { roomCode, userId });
+  socket.on("phase-changed", (roomstate) => {
+        if (hostId != userId)
+        {
+          window.location.href = "lobby.html";
+        }
+        else{
+          localStorage.setItem("restart", true);
+          window.location.href = "game.html?restart=true";
+        }
+    });
 
   try {
     const res = await fetch(`/api/get-results?roomCode=${roomCode}`);
@@ -80,12 +156,18 @@ async function resultscreen() {
 
   const role = localStorage.getItem("role"); // "imposter" or "player"
   const resultType = results.resultType;
+  if (resultType === "draw"){
+    if (role === "imposter") {
+      showImposterWonScreen(results.correctWord, true);
+    } else {
+      showPlayersLostScreen(results.imposterName, results.imposterHint , true);
+    }
+  }
   if (resultType === "imposter-win") {
     if (role === "imposter") {
-      alert("Congratulations, you were an imposter and won the game!");
-      showImposterWonScreen(results.correctWord);
+      showImposterWonScreen(results.correctWord, false);
     } else {
-      showPlayersLostScreen(results.imposterName, results.imposterHint);
+      showPlayersLostScreen(results.imposterName, results.imposterHint , false);
     }
   }
 
@@ -98,20 +180,20 @@ async function resultscreen() {
   }
   normalend();
 }
-function showImposterWonScreen(correctWord) {
+function showImposterWonScreen(correctWord, isDraw) {
   document.getElementById("imposterWonSelf").classList.remove("hidden");
   document.getElementById("correctWord").textContent = correctWord;
-  alert(correctWord);
+  document.getElementById("imposterWonSelfTitle").textContent = isDraw ? "Draw" : "You Won 🎉";
 }
-function showPlayersLostScreen(imposterName, imposterHint) {
+function showPlayersLostScreen(imposterName, imposterHint , isDraw) {
   document.getElementById("imposterWonPlayers").classList.remove("hidden");
   document.getElementById("imposterName").textContent = imposterName;
   document.getElementById("imposterHintPlayers").textContent = imposterHint;
+  document.getElementById("imposterWonPlayersTitle").textContent = isDraw ? "Draw" : "Imposter Wins";
 }
 function showImposterLostScreen(correctWord) {
   document.getElementById("imposterLost").classList.remove("hidden");
   document.getElementById("correctWordLost").textContent = correctWord;
-  alert(correctWord);
 }
 function showPlayersWonScreen(imposterHint, imposterName) {
   document.getElementById("playersWon").classList.remove("hidden");
