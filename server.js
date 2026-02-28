@@ -6,6 +6,7 @@ const io = new Server(http);
 const PORT = 3000;
 
 app.use(express.json());
+app.use(express.text({ type: "*/*" }));
 app.use(express.static("Website"));
 
 const crypto = require("crypto");
@@ -22,15 +23,20 @@ io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
   socket.on("join-room", ({ roomCode, playerId }) => {
-    if (!roomSockets[roomCode]) roomSockets[roomCode] = [];
-    roomSockets[roomCode].push(socket.id);
+    const room = rooms[roomCode];
+    if (!room) return;
+
     socket.join(roomCode);
+
+    // 🔥 Attach socketId to the correct player
+    const player = room.players.find(p => p.id === playerId);
+    if (player) {
+      player.socketId = socket.id;
+    }
+
     console.log(`Player ${playerId} joined room ${roomCode}`);
 
-    // Notify everyone in the room about current players
-    if (rooms[roomCode]) {
-      io.to(roomCode).emit("room-update", rooms[roomCode].players);
-    }
+    io.to(roomCode).emit("room-update", room.players);
   });
   socket.on("restart-game", ({ roomCode, hostId }) => {
     const room = rooms[roomCode];
@@ -44,6 +50,20 @@ io.on("connection", (socket) => {
     // Notify everyone
     io.to(roomCode).emit("phase-changed", { state: "playing", restart: true });
   });
+  socket.on("back-to-lobby", ({ roomCode, hostId }) => {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  // Security: only host can trigger
+  if (room.hostId !== hostId) return;
+
+  // Reset only what you need
+  room.state = "lobby";
+  room.votes = {};
+
+  // Send everyone back
+  io.to(roomCode).emit("return-to-lobby");
+});
   // server-side
     socket.on("next-phase", ({ roomCode, playerId, nextState }) => {
       const room = rooms[roomCode];
@@ -62,6 +82,20 @@ io.on("connection", (socket) => {
 
       io.to(roomCode).emit("phase-changed", { state: room.state });
     });
+  socket.on("player-left", ({ roomCode }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // Check if any imposters remain
+    const impostersLeft = room.players.some(p => p.role === "imposter");
+
+    if (!impostersLeft) {
+      console.log("All imposters are gone!");
+      io.to(roomCode).emit("all-imposters-gone");
+    } else {
+      console.log(`Imposters still in game: ${room.players.filter(p => p.role === "imposter").map(p => p.name).join(", ")}`);
+    }
+  });
   // ---------------- Voting ----------------
     socket.on("submit-vote", ({ roomCode, playerId, voteTarget }) => {
       const room = rooms[roomCode];
@@ -141,16 +175,52 @@ io.on("connection", (socket) => {
         });
       }
     });
-  socket.on("disconnecting", () => {
-    // Remove socket from roomSockets
-    for (const roomCode of socket.rooms) {
-      if (roomSockets[roomCode]) {
-        roomSockets[roomCode] = roomSockets[roomCode].filter(id => id !== socket.id);
-      }
-    }
-  });
-});
+  socket.on("disconnect", () => {
+  for (const roomCode of socket.rooms) {
+    if (roomCode === socket.id) continue;
 
+    const room = rooms[roomCode];
+    if (!room) continue;
+
+    const player = room.players.find(p => p.socketId === socket.id);
+    if (!player) continue;
+
+    const playerId = player.id;
+
+    // Give 2 seconds to reconnect (page transition case)
+    setTimeout(() => {
+      removePlayerProperly(roomCode, playerId);
+    }, 2000);
+  }
+});
+});
+function removePlayerProperly(roomCode, playerId) {
+  const room = rooms[roomCode];
+  if (!room) return;
+
+  const player = room.players.find(p => p.id === playerId);
+  if (!player) return;
+
+  // 🔥 IMPORTANT:
+  // If player has a NEW socketId, they reconnected — do nothing
+  if (player.socketId) {
+    const socketStillConnected = io.sockets.sockets.get(player.socketId);
+    if (socketStillConnected) return;
+  }
+
+  // Remove player
+  room.players = room.players.filter(p => p.id !== playerId);
+
+  // Notify room
+  io.to(roomCode).emit("room-update", room.players);
+
+  // Cleanup empty room
+  if (room.players.length === 0) {
+    delete rooms[roomCode];
+  }
+
+  console.log(`Removed player ${playerId} from room ${roomCode}`);
+}
 // ===================== REST ENDPOINTS =====================
 
 // Create Room
@@ -196,16 +266,40 @@ app.post("/api/join-room", (req, res) => {
 
 // Leave Room (non-host)
 app.post("/api/leave-room", (req, res) => {
-  const { roomCode, playerId } = req.body || {};
-  if (!roomCode || !playerId || !rooms[roomCode]) return res.json({ error: "Room not found" });
+  let data = req.body;
+
+  // If sendBeacon sent raw text, parse it
+  if (typeof data === "string") {
+    try {
+      data = JSON.parse(data);
+    } catch (err) {
+      return res.json({ error: "Invalid JSON" });
+    }
+  }
+
+  const { roomCode, playerId } = data || {};
+
+  if (!roomCode || !playerId || !rooms[roomCode]) {
+    return res.json({ error: "Room not found" });
+  }
 
   const room = rooms[roomCode];
   room.players = room.players.filter(p => p.id !== playerId);
+  for (const voter in room.votes) {
+    if (room.votes[voter] === playerId) {
+      delete room.votes[voter];
+    }
+  }
+  console.log(`${playerId} has left the room`);
 
-  // Notify remaining players
   io.to(roomCode).emit("room-update", room.players);
+  io.to(roomCode).emit("vote-update", {
+    totalVotes: Object.keys(room.votes).length,
+    totalPlayers: room.players.length
+  });
 
   if (room.players.length === 0) delete rooms[roomCode];
+
   res.json({ success: true });
 });
 

@@ -4,7 +4,10 @@ document.getElementById("backBtn").addEventListener("click", () => {
 document.getElementById("hostBtn").addEventListener("click", () => {
   const nameInput = document.getElementById("nameInput").value.trim();
     if (nameInput === "") {
-        alert("Please enter your name to create a game.");
+        document.getElementById("rhostName").style.display = "block";
+        setTimeout(() => {
+        document.getElementById("rhostName").style.display = "none";
+      }, 3000); // 3000ms = 3 seconds
         return;
     }
     // Store the player's name in localStorage for later use
@@ -15,7 +18,7 @@ document.getElementById("hostBtn").addEventListener("click", () => {
           })
     .then(res => res.json())
     .then(data => {
-      if(data.error) return alert(data.error);
+      if(data.error) return console.log(data.error);
       // Store the room code for later
       sessionStorage.setItem("roomCode", data.roomCode);
       // Redirect to lobby or game page

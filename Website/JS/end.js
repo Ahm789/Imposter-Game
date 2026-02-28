@@ -1,3 +1,50 @@
+// Push a state so we can detect backward navigation
+// Force a history entry
+  history.pushState(null, "", location.href);
+
+  window.addEventListener("popstate", function () {
+
+    // Block backward navigation
+    history.pushState(null, "", location.href);
+
+    const hstroomCode = sessionStorage.getItem("roomCode");
+    const proomCode = localStorage.getItem("proomCode");
+    const roomCode = hstroomCode || proomCode;
+
+    const hostId = localStorage.getItem("hostId");
+    const playerId = localStorage.getItem("playerId");
+    const userId = hostId || playerId;
+
+    if (roomCode && playerId) {
+      fetch("/api/leave-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, playerId: userId })
+      });
+
+      localStorage.removeItem("playerId");
+      localStorage.removeItem("proomCode");
+      localStorage.removeItem("playerName");
+      localStorage.setItem("onlineMode", false);
+
+      window.location.replace("join.html");
+    } 
+    else if (roomCode && hostId) {
+      fetch("/api/close-room", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, hostId })
+      });
+
+      localStorage.removeItem("hostId");
+      sessionStorage.removeItem("roomCode");
+      localStorage.removeItem("hostName");
+      localStorage.setItem("onlineMode", false);
+
+      window.location.replace("index.html");
+    }
+  });
+
 window.addEventListener("DOMContentLoaded", () => {
   const onlineMode = localStorage.getItem("onlineMode") === "true";
   document.getElementById("hostWait").style.display = "none";
@@ -11,6 +58,7 @@ window.addEventListener("DOMContentLoaded", () => {
   getgamestate();
   if (onlineMode) {
   const socket = io();
+  
 
   const playerCountEl = document.getElementById("playerCount");
   const hstroomCode = sessionStorage.getItem("roomCode");
@@ -26,6 +74,22 @@ window.addEventListener("DOMContentLoaded", () => {
     socket.on("room-update", (players) => {
       playerCountEl.textContent = `${players.length} player(s) connected`;
   });
+  socket.on("room-closed", () => {
+        if (hostId){
+          localStorage.removeItem("hostId")
+          sessionStorage.removeItem("roomCode");
+          localStorage.removeItem("hostName");
+          localStorage.setItem("onlineMode", false);
+          window.location.href = "index.html"
+        }
+        else{
+          localStorage.removeItem("playerId")
+          localStorage.removeItem("proomCode")
+          localStorage.removeItem("playerName");
+          localStorage.setItem("onlineMode", false)
+          window.location.href ="join.html";
+        }
+    });
   document.getElementById("roomDisplay").textContent = roomCode;
     socket.on("phase-changed", (roomstate) => {
       console.log("Phase changed to:", roomstate.state);
@@ -60,6 +124,7 @@ async function getgamestate() {
 function normalend() {
   const roomCode = sessionStorage.getItem("roomCode") || localStorage.getItem("proomCode");
   const hostId = localStorage.getItem("hostId");
+  const playerId = localStorage.getItem("playerId");
   document.getElementById("restartBtn").addEventListener("click", () => {
     const onlineMode = localStorage.getItem("onlineMode") === "true";
     if (onlineMode){
@@ -84,23 +149,40 @@ function normalend() {
   });
   document.getElementById("homeBtn").addEventListener("click", () => {
     if (roomCode && hostId) {
-            try {
-                fetch("/api/close-room", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ roomCode,hostId })
-                }).then(res => res.json())
-                .then(data => {
-                  if(data.error) return alert(data.error);
-                });
-            } catch (err) {
-                console.error("Error leaving room:", err);
-            }
+      try {
+          fetch("/api/close-room", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ roomCode,hostId })
+          }).then(res => res.json())
+          .then(data => {
+            if(data.error) return console.log(data.error);
+          });
+      } catch (err) {
+          console.error("Error leaving room:", err);
+      }
+      sessionStorage.removeItem("roomCode");
+      localStorage.removeItem("hostId");
+      localStorage.removeItem("hostName");
+      localStorage.setItem("onlineMode", false)
+      window.location.href = "index.html";
+    }
+    else{
+      try {
+            fetch("/api/leave-room", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ roomCode, playerId })
+            });
+        } catch (err) {
+            console.error("Error leaving room:", err);
         }
-
-        sessionStorage.removeItem("roomCode");
-        localStorage.removeItem("hostId");
-    window.location.href = "index.html";
+      localStorage.removeItem("playerId");
+      localStorage.removeItem("proomCode");
+      localStorage.removeItem("playerName");
+      localStorage.setItem("onlineMode", false);
+      window.location.href = "index.html";
+    }
   });
 }
 async function resultscreen() {

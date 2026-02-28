@@ -1,3 +1,47 @@
+history.pushState(null, "", location.href);
+
+window.addEventListener("popstate", function () {
+
+  // Immediately block backward navigation
+  history.pushState(null, "", location.href);
+
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
+
+  const hostId = localStorage.getItem("hostId");
+  const playerId = localStorage.getItem("playerId");
+  const userId = hostId || playerId;
+  document.getElementById("lobbyBtn").style.display = "none";
+
+  if (roomCode && playerId) {
+    fetch("/api/leave-room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomCode, playerId: userId })
+    });
+
+    localStorage.removeItem("playerId");
+    localStorage.removeItem("proomCode");
+    localStorage.removeItem("playerName");
+    localStorage.setItem("onlineMode", false);
+
+    window.location.replace("join.html");
+  } else if (roomCode && hostId) {
+    fetch("/api/close-room", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ roomCode, hostId })
+    });
+
+    localStorage.removeItem("hostId");
+    sessionStorage.removeItem("roomCode");
+    localStorage.removeItem("hostName");
+    localStorage.setItem("onlineMode", false);
+
+    window.location.replace("index.html");
+  }
+});
 window.addEventListener("load", () => {
   const hstroomCode = sessionStorage.getItem("roomCode");
   const proomCode = localStorage.getItem("proomCode");
@@ -12,6 +56,7 @@ window.addEventListener("load", () => {
   const userId = hostId || playerId;
 
   socket.emit("join-room", { roomCode, userId });
+  
 
   const advanceBtn = document.getElementById("resultsBtn");
 
@@ -32,10 +77,81 @@ window.addEventListener("load", () => {
     socket.on("vote-update", ({ totalVotes, totalPlayers }) => {
       playerCountEl.textContent = `${totalVotes} / ${totalPlayers}`;
   });
+  socket.on("return-to-lobby", () => {
+  if (hostId){
+    window.location.href = "game.html";
+  }
+  else{
+    window.location.href = "lobby.html";
+  }
+});
+  // Keep a copy of the previous players
+  let prevPlayers = [];
+
+  socket.on("all-imposters-gone", () => {
+    // e.g., end the game or assign new imposters
+    if (hostId){
+      window.location.href = "game.html";
+    }
+    else{
+      window.location.href = "lobby.html";
+    }
+  });
+  socket.on("room-update", (players) => {
+    // 1️⃣ Current player IDs
+    const currentIds = players.map(p => p.id);
+
+    // 2️⃣ Players who left = in prevPlayers but not in current
+    const leftPlayers = prevPlayers.filter(p => !currentIds.includes(p.id));
+
+    leftPlayers.forEach(p => {
+      console.log(`${p.name} has left the room`);
+      // Optional: show a UI message
+      loadPlayers();
+      document.getElementById("left").style.display = "block";
+      document.getElementById("playerLeft").textContent = p.name;
+      document.getElementById("yourVoteContainer").style.display = "none";
+      document.getElementById("voteDropdown").disabled = false;
+      document.getElementById("submitVoteBtn").disabled = false;
+      setTimeout(() => {
+        document.getElementById("left").style.display = "none";
+      }, 3000); // 3000ms = 3 seconds
+      if (players.length >3){
+        if (hostId){
+          window.location.href = "game.html";
+        }
+        else{
+          window.location.href = "lobby.html";
+        }
+      }
+      else{
+        if (hostId){
+          document.getElementById("lobbyBtn").style.display = "block";
+          document.getElementById("resultsBtn").style.marginTop = "-5px";
+        }
+      }
+      socket.emit("player-left", { roomCode, playerId: p.id });
+    });
+
+    // 3️⃣ Players who joined = in current but not in prev
+    const joinedPlayers = players.filter(p => !prevPlayers.map(p => p.id).includes(p.id));
+
+    joinedPlayers.forEach(p => {
+      console.log(`${p.name} has joined the room`);
+    });
+
+    // 4️⃣ Update prevPlayers for next update
+    prevPlayers = players;
+  });
   // Button emit
   advanceBtn.addEventListener("click", () => {
     // ✅ Use the already declared hostId
     socket.emit("host-advance-results", { roomCode, playerId: hostId });
+  });
+  lobbyBtn.addEventListener("click", () => {
+    if (hostId){
+      socket.emit("back-to-lobby", { roomCode, hostId });
+    }
   });
 
   if (userName) {

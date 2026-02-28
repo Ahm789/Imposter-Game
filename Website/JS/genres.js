@@ -72,7 +72,6 @@ class GenreManager {
 
       // Optional: store the chosen genre for later (like hints)
       localStorage.setItem("Gamegenre", genre);
-      alert(genre);
     }
 
     const words = this.genres[genre];

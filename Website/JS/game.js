@@ -304,7 +304,7 @@ function startOnlineGame() {
                     body: JSON.stringify({ roomCode,hostId })
                 }).then(res => res.json())
                 .then(data => {
-                  if(data.error) return alert(data.error);
+                  if(data.error) return console.log(data.error);
                 });
             } catch (err) {
                 console.error("Error leaving room:", err);

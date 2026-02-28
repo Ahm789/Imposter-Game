@@ -21,6 +21,7 @@ socket.emit("join-room", { roomCode, playerId });
 socket.on("room-update", (players) => {
     playerCountEl.textContent = `${players.length} player(s) connected`;
 });
+document.getElementById("roomDisplay").textContent = roomCode;
 // Catch-up fetch in case the game already started
 fetch(`/api/current-game/${roomCode}`)
   .then(res => res.json())
