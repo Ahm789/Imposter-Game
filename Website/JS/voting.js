@@ -65,8 +65,7 @@ window.addEventListener("load", () => {
   const userId = hostId || playerId;
 
   socket.emit("join-room", { roomCode, userId });
-  
-
+  socket.emit("player-left", { roomCode, playerId });
   const advanceBtn = document.getElementById("resultsBtn");
 
   // Listeners

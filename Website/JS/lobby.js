@@ -1,3 +1,27 @@
+window.addEventListener("pagehide", function () {
+    const isInternalNav = sessionStorage.getItem("internalNavigation");
+    // If this is internal navigation, don't leave room
+    if (isInternalNav === "true") {
+      sessionStorage.removeItem("internalNavigation");
+      return;
+    }
+    // Immediately block backward navigation
+    const proomCode = localStorage.getItem("proomCode");
+    const roomCode =  proomCode;
+    const playerId = localStorage.getItem("playerId");
+
+    navigator.sendBeacon(
+    "/api/leave-room",
+    JSON.stringify({ roomCode, playerId })
+    );
+    localStorage.removeItem("playerId");
+    localStorage.removeItem("proomCode");
+    localStorage.removeItem("playerName");
+    localStorage.setItem("onlineMode", false);
+    socket.emit("player-left", { roomCode, playerId });
+    window.location.replace("join.html");
+});
+
 document.addEventListener("DOMContentLoaded", () => {
   const msg = sessionStorage.getItem("errorMsg");
 
@@ -26,9 +50,9 @@ const playerId = localStorage.getItem("playerId");
 
 // Redirect if no roomCode
 if (!roomCode || !playerId) {
+    sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "join.html";
 }
-
 // ======================= JOIN SOCKET ROOM =======================
 socket.emit("join-room", { roomCode, playerId });
 
@@ -56,6 +80,7 @@ socket.on("room-closed", () => {
     sessionStorage.setItem("errorMsg", "The host closed the game");
     localStorage.removeItem("proomCode");
     localStorage.removeItem("playerId");
+    sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "join.html";
 });
 // ======================= LEAVE ROOM =======================
@@ -76,6 +101,7 @@ backBtn.addEventListener("click", async () => {
 
     localStorage.removeItem("proomCode");
     localStorage.removeItem("playerId");
+    sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "join.html";
 });
 
@@ -138,6 +164,7 @@ function showOnlineGameOverlay(gameData) {
 
                     // Redirect based on server voting status
                     if (data.votingEnabled) {
+                        sessionStorage.setItem("internalNavigation", "true");
                         window.location.href = "voting.html";
                     } else {
                         overlay.classList.add("hidden");
@@ -145,6 +172,7 @@ function showOnlineGameOverlay(gameData) {
                 } catch (err) {
                     console.error("Failed to check voting:", err);
                     // fallback
+                    sessionStorage.setItem("internalNavigation", "true");
                     window.location.href = "end.html";
                 }
             };

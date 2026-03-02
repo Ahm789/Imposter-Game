@@ -1,7 +1,36 @@
 window.addEventListener("DOMContentLoaded", () => {
-  const onlineMode = localStorage.getItem("onlineMode") === "true";
-  
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const roomCode = hstroomCode;
+  if (roomCode == null){
+    window.location.href = "index.html";
+  }
 
+  window.addEventListener("pagehide", function () {
+    const isInternalNav = sessionStorage.getItem("internalNavigation");
+
+    // If this is internal navigation, don't leave room
+    if (isInternalNav === "true") {
+      sessionStorage.removeItem("internalNavigation");
+      return;
+    }
+    // Immediately block backward navigation
+
+
+    const hostId = localStorage.getItem("hostId");
+      navigator.sendBeacon(
+        "/api/close-room",
+        JSON.stringify({ roomCode, hostId })
+      );
+      localStorage.removeItem("hostId");
+      sessionStorage.removeItem("roomCode");
+      localStorage.removeItem("hostName");
+      localStorage.setItem("onlineMode", false);
+      window.location.replace("index.html");
+  });
+});
+
+window.addEventListener("DOMContentLoaded", () => {
+  const onlineMode = localStorage.getItem("onlineMode") === "true";
   const msg = sessionStorage.getItem("errorMsg");
   if (msg != null) {
     // Show it however you want
@@ -23,7 +52,8 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 // Common UI elements
   document.getElementById("settingsBtn").addEventListener("click", () => {
-      localStorage.setItem("previousPage", window.location.pathname); // store current page
+    localStorage.setItem("previousPage", window.location.pathname); // store current page
+    sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "settings.html";
   });
   const infoBtn = document.getElementById("infoBtn");
@@ -214,6 +244,7 @@ function startLocalGame() {
       currentPlayerIndex++;
       if (currentPlayerIndex >= players.length) {
         overlayText.textContent = "All players have seen their roles!";
+        sessionStorage.setItem("internalNavigation", "true");
         setTimeout(() => window.location.href = "end.html", 2000);
       } else {
         showTapToStart(); // Next player
@@ -283,8 +314,9 @@ function startOnlineGame() {
     const hostName = localStorage.getItem("hostName");
     // Redirect if not in a room
     if (!roomCode || !hostId) {
-        window.location.href = "create.html";
-        return;
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "create.html";
+      return;
     }
 
     // Show lobby info
@@ -305,7 +337,16 @@ function startOnlineGame() {
     socket.on("room-closed", () => {
         sessionStorage.removeItem("roomCode");
         localStorage.removeItem("hostId");
+        sessionStorage.setItem("internalNavigation", "true");
         window.location.href = "create.html";
+    });
+    socket.on("all-imposters-gone", () => {
+    // e.g., end the game or assign new imposters
+    sessionStorage.setItem("errorMsg", "Imposter left the game");
+      if (hostId){
+        sessionStorage.setItem("internalNavigation", "true");
+        window.location.href = "game.html";
+      }
     });
 
     // ==================== HOST LEAVE ====================
@@ -327,6 +368,7 @@ function startOnlineGame() {
 
         sessionStorage.removeItem("roomCode");
         localStorage.removeItem("hostId");
+        sessionStorage.setItem("internalNavigation", "true");
         window.location.href = "create.html";
     });
 
@@ -455,13 +497,16 @@ function startOnlineGame() {
 
                   // Redirect based on server voting status
                   if (data.votingEnabled) {
+                    sessionStorage.setItem("internalNavigation", "true");
                       window.location.href = "voting.html";
                   } else {
+                    sessionStorage.setItem("internalNavigation", "true");
                       window.location.href = "end.html";
                   }
               } catch (err) {
                   console.error("Failed to check voting:", err);
                   // fallback
+                  sessionStorage.setItem("internalNavigation", "true");
                   window.location.href = "end.html";
               }
           };

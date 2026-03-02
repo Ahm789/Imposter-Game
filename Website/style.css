@@ -21,15 +21,16 @@ body {
 ========================= */
 .phone-container {
   width: 100%;
-  max-width: 420px;     /* Maximum phone width */
-  height: 100vh;        /* Full screen height */
-  max-height: 900px;    /* Optional cap */
+  max-width: 420px;
+  height: 100dvh; /* ✅ dynamic viewport height */
+  max-height: 900px;
   background-color: #eaeaea;
   border-radius: 30px;
   padding: 30px 20px;
   display: flex;
   justify-content: center;
   align-items: flex-start;
+  overflow: hidden; /* prevents accidental scroll */
 }
 /* =========================
    CARD LAYOUT
