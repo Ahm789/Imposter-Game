@@ -1,50 +1,63 @@
-// Push a state so we can detect backward navigation
-// Force a history entry
-  history.pushState(null, "", location.href);
+let socket;       // global socket
+let playerCount = 0; // global player count
+window.addEventListener("DOMContentLoaded", () => {
 
-  window.addEventListener("popstate", function () {
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
 
-    // Block backward navigation
-    history.pushState(null, "", location.href);
+  // If user somehow opens end.html without a room
+  if (!roomCode) {
+    window.location.href = "index.html";
+    return;
+  }
 
-    const hstroomCode = sessionStorage.getItem("roomCode");
-    const proomCode = localStorage.getItem("proomCode");
-    const roomCode = hstroomCode || proomCode;
+  window.addEventListener("pagehide", function () {
+
+    const isInternalNav = sessionStorage.getItem("internalNavigation");
+
+    // If navigation was triggered by your own button (restart / lobby etc)
+    if (isInternalNav === "true") {
+      sessionStorage.removeItem("internalNavigation");
+      return;
+    }
 
     const hostId = localStorage.getItem("hostId");
     const playerId = localStorage.getItem("playerId");
     const userId = hostId || playerId;
 
-    if (roomCode && playerId) {
-      fetch("/api/leave-room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomCode, playerId: userId })
-      });
+    if (!roomCode) return;
+
+    // PLAYER leaving
+    if (playerId) {
+
+      navigator.sendBeacon(
+        "/api/leave-room",
+        JSON.stringify({ roomCode, playerId: userId })
+      );
 
       localStorage.removeItem("playerId");
       localStorage.removeItem("proomCode");
       localStorage.removeItem("playerName");
       localStorage.setItem("onlineMode", false);
 
-      window.location.replace("join.html");
-    } 
-    else if (roomCode && hostId) {
-      fetch("/api/close-room", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomCode, hostId })
-      });
+    }
+
+    // HOST leaving
+    else if (hostId) {
+
+      navigator.sendBeacon(
+        "/api/close-room",
+        JSON.stringify({ roomCode, hostId })
+      );
 
       localStorage.removeItem("hostId");
       sessionStorage.removeItem("roomCode");
       localStorage.removeItem("hostName");
       localStorage.setItem("onlineMode", false);
-
-      window.location.replace("index.html");
     }
   });
-
+});
 window.addEventListener("DOMContentLoaded", () => {
   const onlineMode = localStorage.getItem("onlineMode") === "true";
   document.getElementById("hostWait").style.display = "none";
@@ -58,8 +71,6 @@ window.addEventListener("DOMContentLoaded", () => {
   getgamestate();
   if (onlineMode) {
   const socket = io();
-  
-
   const playerCountEl = document.getElementById("playerCount");
   const hstroomCode = sessionStorage.getItem("roomCode");
   const proomCode = localStorage.getItem("proomCode");
@@ -72,6 +83,7 @@ window.addEventListener("DOMContentLoaded", () => {
   socket.emit("join-room", { roomCode, userId }); 
 
     socket.on("room-update", (players) => {
+      playerCount = players.length;
       playerCountEl.textContent = `${players.length} player(s) connected`;
   });
   socket.on("room-closed", () => {
@@ -83,6 +95,8 @@ window.addEventListener("DOMContentLoaded", () => {
           window.location.href = "index.html"
         }
         else{
+          sessionStorage.setItem("errorMsg", "The host closed the game");
+          sessionStorage.setItem("internalNavigation", "true");
           localStorage.removeItem("playerId")
           localStorage.removeItem("proomCode")
           localStorage.removeItem("playerName");
@@ -97,9 +111,11 @@ window.addEventListener("DOMContentLoaded", () => {
       if (roomstate.state === "playing") {
         if (hostId === userId) {
           localStorage.setItem("restart", true);
+          sessionStorage.setItem("internalNavigation", "true");
           window.location.href = "game.html?restart=true";
         } else {
           localStorage.setItem("restart", true);
+          sessionStorage.setItem("internalNavigation", "true");
           window.location.href = "lobby.html";
         }
       }
@@ -128,11 +144,21 @@ function normalend() {
   document.getElementById("restartBtn").addEventListener("click", () => {
     const onlineMode = localStorage.getItem("onlineMode") === "true";
     if (onlineMode){
-      const socket = io();
+      if (playerCount >= 3){
+        const socket = io();
       // Host wants to restart
       socket.emit("next-phase", { roomCode, playerId: hostId, nextState: "playing" });
+      }
+      else {
+        document.getElementById("rhostName").style.display = "block";
+        document.getElementById("errorMsg").textContent = "Not enough players in the lobby";
+        setTimeout(() => {
+        document.getElementById("rhostName").style.display = "none";
+      }, 5000); // 5000ms = 5 seconds
+      }
     }
     else{
+      sessionStorage.setItem("internalNavigation", "true");
       window.location.href = "game.html?restart=true";
     }
   });
@@ -144,7 +170,7 @@ function normalend() {
     else{
       localStorage.setItem("previousPage", window.location.pathname); // store current page
     }
-    
+    sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "settings.html"; // navigate after storing
   });
   document.getElementById("homeBtn").addEventListener("click", () => {
@@ -181,6 +207,7 @@ function normalend() {
       localStorage.removeItem("proomCode");
       localStorage.removeItem("playerName");
       localStorage.setItem("onlineMode", false);
+      sessionStorage.setItem("internalNavigation", "true");
       window.location.href = "index.html";
     }
   });
@@ -213,10 +240,12 @@ async function resultscreen() {
   socket.on("phase-changed", (roomstate) => {
         if (hostId != userId)
         {
+          sessionStorage.setItem("internalNavigation", "true");
           window.location.href = "lobby.html";
         }
         else{
           localStorage.setItem("restart", true);
+          sessionStorage.setItem("internalNavigation", "true");
           window.location.href = "game.html?restart=true";
         }
     });
@@ -239,27 +268,36 @@ async function resultscreen() {
 
   const role = localStorage.getItem("role"); // "imposter" or "player"
   const resultType = results.resultType;
-  if (resultType === "draw"){
-    if (role === "imposter") {
-      showImposterWonScreen(results.correctWord, true);
-    } else {
-      showPlayersLostScreen(results.imposterName, results.imposterHint , true);
-    }
-  }
-  if (resultType === "imposter-win") {
-    if (role === "imposter") {
-      showImposterWonScreen(results.correctWord, false);
-    } else {
-      showPlayersLostScreen(results.imposterName, results.imposterHint , false);
-    }
-  }
 
-  if (resultType === "players-win") {
-    if (role === "imposter") {
-      showImposterLostScreen(results.correctWord);
-    } else {
-      showPlayersWonScreen(results.imposterHint, results.imposterName);
-    }
+  switch (resultType) {
+    case "draw":
+      if (role === "imposter") {
+        showImposterWonScreen(results.correctWord, true);
+      } else {
+        showPlayersLostScreen(results.imposters, true);
+      }
+      break;
+
+    case "imposter-win":
+      if (role === "imposter") {
+        showImposterWonScreen(results.correctWord, false);
+      } else {
+        showPlayersLostScreen(results.imposters, false);
+      }
+      break;
+
+    case "players-win":
+      if (role === "imposter") {
+        showImposterLostScreen(results.correctWord);
+      } else {
+        showPlayersWonScreen(results.imposters);
+      }
+      break;
+
+    case "game-noImposter":
+      // Everyone sees the word, no imposters this round
+      showNoImposterScreen(results.correctWord);
+      break;
   }
   normalend();
 }
@@ -268,18 +306,30 @@ function showImposterWonScreen(correctWord, isDraw) {
   document.getElementById("correctWord").textContent = correctWord;
   document.getElementById("imposterWonSelfTitle").textContent = isDraw ? "Draw" : "You Won 🎉";
 }
-function showPlayersLostScreen(imposterName, imposterHint , isDraw) {
+function showPlayersLostScreen(imposters , isDraw) {
   document.getElementById("imposterWonPlayers").classList.remove("hidden");
-  document.getElementById("imposterName").textContent = imposterName;
-  document.getElementById("imposterHintPlayers").textContent = imposterHint;
+  const names = imposters.map(i => i.name).join(", ");
+  const hints = imposters
+    .map(i => i.hint || "No hint")
+    .join(", ");
+  document.getElementById("imposterName").textContent = names;
+  document.getElementById("imposterHintPlayers").textContent = hints;
   document.getElementById("imposterWonPlayersTitle").textContent = isDraw ? "Draw" : "Imposter Wins";
 }
 function showImposterLostScreen(correctWord) {
   document.getElementById("imposterLost").classList.remove("hidden");
   document.getElementById("correctWordLost").textContent = correctWord;
 }
-function showPlayersWonScreen(imposterHint, imposterName) {
+function showPlayersWonScreen(imposters) {
   document.getElementById("playersWon").classList.remove("hidden");
-  document.getElementById("imposterHint").textContent = imposterHint;
-  document.getElementById("imposterNameWon").textContent = imposterName;
+  const names = imposters.map(i => i.name).join(", ");
+  const hints = imposters
+    .map(i => i.hint || "No hint")
+    .join(", ");
+  document.getElementById("imposterNameWon").textContent = names;
+  document.getElementById("imposterHint").textContent = hints;
+}
+function showNoImposterScreen(word) {
+  document.getElementById("noImposterRound").classList.remove("hidden");
+  document.getElementById("noImposterWord").textContent = word;
 }

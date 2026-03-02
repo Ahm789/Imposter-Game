@@ -74,15 +74,29 @@
           </select>
         </div>
         <div class="form-group">
-          <label for="imposters">Randomly Select No Imposters</label>
+          <label for="zimposters">Randomly Select No Imposters</label>
           <select id="zimposters">
             <option>Yes</option>
             <option>No</option>
           </select>
         </div>
+        <div class="form-group">
+          <label for="chance">The Chance For No Imposters</label>
+          <select id="chance">
+            <option>0.1</option>
+            <option>0.2</option>
+            <option>0.3</option>
+            <option>0.4</option>
+            <option>0.5</option>
+            <option>0.6</option>
+            <option>0.7</option>
+            <option>0.8</option>
+            <option>0.9</option>
+          </select>
+        </div>
 
         <div class="form-group">
-          <label for="hintToggle">Hint for Imposter</label>
+          <label for="hintToggle">Hint For Imposter</label>
           <select id="hintToggle">
             <option>Yes</option>
             <option>No</option>
@@ -112,6 +126,8 @@
     window.addEventListener("load", () => {
     const hintToggle = document.getElementById("hintToggle");
     const difficulty = document.getElementById("difficulty");
+    const noImposters = document.getElementById("zimposters");
+    const chance = document.getElementById("chance");
 
     // Function to update difficulty state
     function updateDifficultyState() {
@@ -123,6 +139,16 @@
         difficulty.disabled = false;
         }
     }
+    function imposterchance(){
+      if (noImposters.value === "No"){
+          chance.classList.add("disabled-select");
+          chance.disabled = true;
+        }
+        else {
+        chance.classList.remove("disabled-select");
+        chance.disabled = false;
+        }
+    }
     if(localStorage.getItem("onlineMode") === "true") {
         document.getElementById("players").classList.add("hidden");
         document.querySelector("label[for='players']").classList.add("hidden");
@@ -130,16 +156,21 @@
     }
     // Initial check on load
     updateDifficultyState();
+    imposterchance();
 
     // Listen for changes
     hintToggle.addEventListener("change", () => {
         updateDifficultyState();
     });
+    noImposters.addEventListener("change", () => {
+        imposterchance();
+    });
 
     // Load saved settings from localStorage
-    document.getElementById("players").value = localStorage.getItem("players") || "4";
+    document.getElementById("players").value = localStorage.getItem("players") || "3";
     document.getElementById("imposters").value = localStorage.getItem("imposters") || "1";
     document.getElementById("zimposters").value = localStorage.getItem("zimposters") || "No";
+    document.getElementById("chance").value = localStorage.getItem("chance") || "0.2";
     document.getElementById("difficulty").value = localStorage.getItem("difficulty") || "Medium";
     document.getElementById("hintToggle").value = localStorage.getItem("hintToggle") || "Yes";
     document.getElementById("voting").value = localStorage.getItem("voting") || "No";
@@ -158,6 +189,7 @@
         localStorage.setItem("players", document.getElementById("players").value);
         localStorage.setItem("imposters", document.getElementById("imposters").value);
         localStorage.setItem("zimposters", document.getElementById("zimposters").value);
+        localStorage.setItem("chance", document.getElementById("chance").value);
         localStorage.setItem("difficulty", document.getElementById("difficulty").value);
         localStorage.setItem("hintToggle", document.getElementById("hintToggle").value);
         localStorage.setItem("genre", document.getElementById("genre").value);

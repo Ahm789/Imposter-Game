@@ -1,3 +1,18 @@
+document.addEventListener("DOMContentLoaded", () => {
+  const msg = sessionStorage.getItem("errorMsg");
+
+  if (msg) {
+    // Show it however you want
+    document.getElementById("errors").style.display = "block";
+    document.getElementById("error").textContent = msg;
+        setTimeout(() => {
+        document.getElementById("errors").style.display = "none";
+      }, 5000); // 5000ms = 5 seconds
+
+    // CRITICAL: remove it immediately
+    sessionStorage.removeItem("errorMsg");
+  }
+});
 // ======================= SOCKET.IO =======================
 const socket = io(); // connect to server
 
@@ -38,7 +53,7 @@ socket.on("game-started", data => {
 });
 // Handle host closing the room
 socket.on("room-closed", () => {
-    alert("Host closed the room. Returning to join page.");
+    sessionStorage.setItem("errorMsg", "The host closed the game");
     localStorage.removeItem("proomCode");
     localStorage.removeItem("playerId");
     window.location.href = "join.html";

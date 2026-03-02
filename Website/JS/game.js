@@ -1,5 +1,19 @@
 window.addEventListener("DOMContentLoaded", () => {
   const onlineMode = localStorage.getItem("onlineMode") === "true";
+  
+
+  const msg = sessionStorage.getItem("errorMsg");
+  if (msg != null) {
+    // Show it however you want
+    document.getElementById("rhostName").style.display = "block";
+    document.getElementById("errorMsg").textContent = msg;
+        setTimeout(() => {
+        document.getElementById("rhostName").style.display = "none";
+      }, 5000); // 5000ms = 5 seconds
+
+    // CRITICAL: remove it immediately
+    sessionStorage.removeItem("errorMsg");
+  }
 
   if (onlineMode) {
     startOnlineGame();
@@ -54,6 +68,7 @@ function startLocalGame() {
     // Load settings from localStorage
     const playerCount = parseInt(localStorage.getItem("players")) || 4; // default 4
     let imposterCount = parseInt(localStorage.getItem("imposters")) || 1; // default 1
+    let imposterChance = parseFloat(localStorage.getItem("chance")) || 0.2; // default 1
     let randomImposters = localStorage.getItem("zimposters") || "No"; // "Yes" or "No"
 
     // Load other settings
@@ -68,7 +83,7 @@ function startLocalGame() {
     // If randomImposters is "Yes", set imposterCount to 0 randomly (50% for testing)
     if (randomImposters === "Yes") {
       const randomChance = Math.random(); // 0 → 1
-      if (randomChance < 0.2) { // 50% chance to set zero imposters
+      if (randomChance < imposterChance) { // 50% chance to set zero imposters
         imposterCount = 0;
         console.log("Random imposters test: No imposters this game!");
       }
@@ -261,7 +276,7 @@ function startOnlineGame() {
     const playerCountEl = document.getElementById("playerCount");
     const startBtn = document.getElementById("startBtn");
     const backBtn = document.getElementById("backBtn");
-
+    let playerCount = 0;
     const roomCode = sessionStorage.getItem("roomCode");
     const restart = localStorage.getItem("restart");
     const hostId = localStorage.getItem("hostId"); // host's ID
@@ -280,15 +295,14 @@ function startOnlineGame() {
     // ==================== SOCKET.IO ====================
     // Join room on server
     socket.emit("join-room", { roomCode, hostId, isHost: true });
-
     // Listen for room updates
     socket.on("room-update", (players) => {
         playerCountEl.textContent = `${players.length} player(s) connected`;
+        playerCount = players.length;
     });
     console.log("Socket listeners set up for lobby",hostId);
     // If host closed the room (from another tab), redirect
     socket.on("room-closed", () => {
-        alert("Host closed the room. Returning to create page.");
         sessionStorage.removeItem("roomCode");
         localStorage.removeItem("hostId");
         window.location.href = "create.html";
@@ -319,7 +333,17 @@ function startOnlineGame() {
     // ==================== START GAME ====================
     // Start button click
     startBtn.addEventListener("click", () => {
-      startGame();
+      if (playerCount < 3){
+          // Show it however you want
+          document.getElementById("rhostName").style.display = "block";
+          document.getElementById("errorMsg").textContent = "Not enough players";
+              setTimeout(() => {
+              document.getElementById("rhostName").style.display = "none";
+            }, 5000); // 5000ms = 5 seconds
+      }
+      else{
+        startGame();
+      }
     });
     async function startGame() {
       const hostId = localStorage.getItem("hostId");
@@ -331,8 +355,9 @@ function startOnlineGame() {
           roomCode: sessionStorage.getItem("roomCode"),
           hostId: hostId,
           settings: {
-            imposterCount: localStorage.getItem("imposters"),
+            imposterCount: parseInt(localStorage.getItem("imposters")),
             randomImposters: localStorage.getItem("zimposters"),
+            imposterChance : parseFloat(localStorage.getItem("chance")),
             difficulty: localStorage.getItem("difficulty"),
             hintToggle: localStorage.getItem("hintToggle"),
             genre: localStorage.getItem("genre"),
@@ -349,12 +374,6 @@ function startOnlineGame() {
       console.log("Game started successfully:", data, hostId);
       return data;
     }
-
-    startBtn.addEventListener("click", () => {
-      startGame().catch(err => {
-        console.error("Failed to start game:", err);
-      });
-    });
     // ---------------- Client-side (players) ----------------
 
           

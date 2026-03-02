@@ -16,7 +16,15 @@
         <p class="subtitle">Results</p>
         <p class="subtitle" id="userName"></p>
       </div>
-
+      <!-- =========================
+           NO-IMPOSTER
+      ========================== -->
+      <section id="noImposterRound" class="hidden">
+        <h2>No Imposters This Round!</h2>
+        <p>Everyone gets to see the word:</p>
+        <p class="role-text" id="noImposterWord">---</p>
+        <p>Congratulations, all players win 🎉</p>
+      </section>
       <!-- =========================
            NON-IMPOSTER: IMPOSTER WINS
       ========================== -->
@@ -84,6 +92,9 @@
       <!-- =========================
            HOST CONTROLS
       ========================== -->
+      <p id="rhostName" style="display: none;">
+        <span style="color: red;" id = "errorMsg"></span>
+      </p>
       <div class="button-group2" id="hostControls">
         <button class="main-btn" id="restartBtn">Start Again</button>
         <button id="settingsBtn" class="main-btn secondary">Change Settings</button>

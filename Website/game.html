@@ -30,6 +30,9 @@
         <p class="subtitle">Ready to play? Tap start to begin!</p>
       </div>
 
+      <p id="rhostName" style="display: none;">
+        <span style="color: red;" id = "errorMsg"></span>
+      </p>
       <!-- Start button -->
       <div class="button-group">
         <button class="main-btn" id="startBtn">Start Game</button>
@@ -47,11 +50,14 @@
     <span id="closeRules" class="close-btn">&times;</span>
     <h2>The Odd One Out Game Rules</h2>
     <ul>
-      <li>Each player takes a turn to see their role or word.</li>
-      <li>Imposters get a hint about the word, normal players see the actual word.</li>
-      <li>The game continues until all players have seen their roles.</li>
-      <li>Imposters try to guess the word or mislead others in discussion.</li>
-      <li>You can adjust hints, difficulty, and number of imposters in the settings.</li>
+      <li>Each round has one secret word.</li>
+      <li>Players take turns privately viewing their role.</li>
+      <li>Most players see the secret word. Imposters receive only a hint instead.</li>
+      <li>After everyone has seen their role, discussion begins.</li>
+      <li>Describe the word without saying it directly.</li>
+      <li>Imposters must blend in and try to figure out the word.</li>
+      <li>After discussion, everyone votes for who they think the imposter is.</li>
+      <li>Adjust hints, difficulty, and number of imposters in the settings before starting.</li>
     </ul>
   </div>
 </div>

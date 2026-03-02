@@ -40,3 +40,18 @@ document.getElementById("joinBtn").addEventListener("click", () => {
     })
     .catch(err => console.error("Error joining room:", err));
 });
+document.addEventListener("DOMContentLoaded", () => {
+  const msg = sessionStorage.getItem("errorMsg");
+
+  if (msg) {
+    // Show it however you want
+    document.getElementById("errors").style.display = "block";
+    document.getElementById("error").textContent = msg;
+        setTimeout(() => {
+        document.getElementById("errors").style.display = "none";
+      }, 5000); // 5000ms = 5 seconds
+
+    // CRITICAL: remove it immediately
+    sessionStorage.removeItem("errorMsg");
+  }
+});

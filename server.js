@@ -6,7 +6,9 @@ const io = new Server(http);
 const PORT = 3000;
 
 app.use(express.json());
-app.use(express.text({ type: "*/*" }));
+app.use(express.text({
+  type: "text/plain"   // ONLY parse text/plain as text
+}));
 app.use(express.static("Website"));
 
 const crypto = require("crypto");
@@ -130,43 +132,60 @@ io.on("connection", (socket) => {
           voteCounts[voteTarget] = (voteCounts[voteTarget] || 0) + 1;
         }
 
-        const imposter = room.players.find(p => p.role === "imposter");
-        const imposterVotes = voteCounts[imposter.id] || 0;
+        const imposters = room.players.filter(p => p.role === "imposter");
 
+        // Count votes
         const highestVotes = Math.max(...Object.values(voteCounts));
-
         const playersWithHighest = Object.entries(voteCounts)
           .filter(([_, count]) => count === highestVotes)
           .map(([id]) => id);
 
-        let resultType;
+        // Check how many imposters were tied or eliminated
+        const impostersWithHighestVotes = imposters.filter(i =>
+          playersWithHighest.includes(i.id)
+        );
 
-        if (playersWithHighest.length > 1 && playersWithHighest.includes(imposter.id)) {
-          resultType = "draw";
-        } 
-        else if (imposterVotes === highestVotes) {
-          resultType = "players-win";
-        } 
-        else {
-          resultType = "imposter-win";
+        let resultType;
+        if (imposters.length === 0) {
+          resultType = "game-noImposter";
+        } else {
+          // Count votes
+          const highestVotes = Math.max(...Object.values(voteCounts));
+          const playersWithHighest = Object.entries(voteCounts)
+            .filter(([_, count]) => count === highestVotes)
+            .map(([id]) => id);
+
+          // Check how many imposters were tied or eliminated
+          const impostersWithHighestVotes = imposters.filter(i =>
+            playersWithHighest.includes(i.id)
+          );
+
+          // 🟡 DRAW = tie and at least one imposter involved
+          if (playersWithHighest.length > 1 && impostersWithHighestVotes.length > 0) {
+            resultType = "draw";
+          }
+          // 🟢 PLAYERS WIN = ALL imposters eliminated
+          else if (impostersWithHighestVotes.length === imposters.length) {
+            resultType = "players-win";
+          }
+          // 🔴 IMPOSTERS WIN = at least one survives
+          else {
+            resultType = "imposter-win";
+          }
         }
 
         room.state = "results";
         room.results = {
           resultType,
-          imposterName: imposter.name,
-          imposterHint: imposter.hint,
+          imposters: imposters.map(i => ({
+            name: i.name,
+            hint: i.hint
+          })),
           correctWord: room.word
         };
-
         io.to(roomCode).emit("phase-changed", {
           state: "results",
-          results: {
-            resultType,
-            imposterName: imposter.name,
-            imposterHint: imposter.hint,
-            correctWord: room.word
-          }
+          results: room.results
         });
       } else {
         socket.emit("not-all-voted", {
@@ -285,11 +304,7 @@ app.post("/api/leave-room", (req, res) => {
 
   const room = rooms[roomCode];
   room.players = room.players.filter(p => p.id !== playerId);
-  for (const voter in room.votes) {
-    if (room.votes[voter] === playerId) {
-      delete room.votes[voter];
-    }
-  }
+  room.votes = {};
   console.log(`${playerId} has left the room`);
 
   io.to(roomCode).emit("room-update", room.players);
@@ -305,17 +320,23 @@ app.post("/api/leave-room", (req, res) => {
 
 // Close Room (host)
 app.post("/api/close-room", (req, res) => {
-  const { roomCode, hostId } = req.body || {};
+  let data = req.body;
+  if (typeof data === "string") {
+    try { data = JSON.parse(data); } 
+    catch (err) { return res.json({ error: "Invalid JSON" }); }
+  }
+
+  const { roomCode, hostId } = data || {};
   if (!roomCode || !hostId || !rooms[roomCode]) return res.json({ error: "Room not found" });
   if (rooms[roomCode].hostId !== hostId) return res.json({ error: "Only host can close the room" });
 
-  // Notify everyone in the room that the host closed it
+  console.log("Host is closing the room");
+
   io.to(roomCode).emit("room-closed");
 
   delete rooms[roomCode];
   res.json({ success: true });
 });
-
 // Start Game
 app.post("/api/start-game", (req, res) => {
   const { roomCode, hostId, settings } = req.body || {};
@@ -327,7 +348,7 @@ app.post("/api/start-game", (req, res) => {
   const GenreManager = require("./Website/JS/genres.js");
   const genreManager = new GenreManager();
   // Settings from host
-  const imposterCount = parseInt(settings.imposters) || 1;
+  let imposterCount = parseInt(settings.imposterCount) || 1;
   const randomImposters = settings.randomImposters || "No";
   const difficulty = (settings.difficulty || "medium").toLowerCase();
   const hintToggle = settings.hintToggle || "Yes";
@@ -336,8 +357,13 @@ app.post("/api/start-game", (req, res) => {
     const genres = genreManager.getGenres();
     genre = genres[Math.floor(Math.random() * genres.length)];
   } 
-  console.log(genre);
-
+  if (randomImposters === "Yes") {
+    const randomChance = Math.random(); // 0 → 1
+    if (randomChance < settings.imposterChance || 0.2) { 
+      imposterCount = 0;
+      console.log("Random imposters test: No imposters this game!");
+    }
+  }
   const votingEnabled = settings.voting || false;
   room.settings.votingEnabled = votingEnabled;
 

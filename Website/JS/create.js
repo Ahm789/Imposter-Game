@@ -5,6 +5,7 @@ document.getElementById("hostBtn").addEventListener("click", () => {
   const nameInput = document.getElementById("nameInput").value.trim();
     if (nameInput === "") {
         document.getElementById("rhostName").style.display = "block";
+        document.getElementById("error").textContent = "Please enter your name to create a game.";
         setTimeout(() => {
         document.getElementById("rhostName").style.display = "none";
       }, 3000); // 3000ms = 3 seconds
@@ -21,6 +22,7 @@ document.getElementById("hostBtn").addEventListener("click", () => {
       if(data.error) return console.log(data.error);
       // Store the room code for later
       sessionStorage.setItem("roomCode", data.roomCode);
+      sessionStorage.setItem("errorMsg", "");
       // Redirect to lobby or game page
       localStorage.setItem("onlineMode", "true");
       window.location.href = "game.html";

@@ -1,46 +1,55 @@
-history.pushState(null, "", location.href);
-
-window.addEventListener("popstate", function () {
-
-  // Immediately block backward navigation
-  history.pushState(null, "", location.href);
-
+window.addEventListener("DOMContentLoaded", () => {
   const hstroomCode = sessionStorage.getItem("roomCode");
   const proomCode = localStorage.getItem("proomCode");
   const roomCode = hstroomCode || proomCode;
-
-  const hostId = localStorage.getItem("hostId");
-  const playerId = localStorage.getItem("playerId");
-  const userId = hostId || playerId;
-  document.getElementById("lobbyBtn").style.display = "none";
-
-  if (roomCode && playerId) {
-    fetch("/api/leave-room", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomCode, playerId: userId })
-    });
-
-    localStorage.removeItem("playerId");
-    localStorage.removeItem("proomCode");
-    localStorage.removeItem("playerName");
-    localStorage.setItem("onlineMode", false);
-
-    window.location.replace("join.html");
-  } else if (roomCode && hostId) {
-    fetch("/api/close-room", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ roomCode, hostId })
-    });
-
-    localStorage.removeItem("hostId");
-    sessionStorage.removeItem("roomCode");
-    localStorage.removeItem("hostName");
-    localStorage.setItem("onlineMode", false);
-
-    window.location.replace("index.html");
+  if (roomCode == null){
+    window.location.href = "index.html";
   }
+
+  window.addEventListener("pagehide", function () {
+    const isInternalNav = sessionStorage.getItem("internalNavigation");
+
+    // If this is internal navigation, don't leave room
+    if (isInternalNav === "true") {
+      sessionStorage.removeItem("internalNavigation");
+      return;
+    }
+    // Immediately block backward navigation
+
+    const hstroomCode = sessionStorage.getItem("roomCode");
+    const proomCode = localStorage.getItem("proomCode");
+    const roomCode = hstroomCode || proomCode;
+
+    const hostId = localStorage.getItem("hostId");
+    const playerId = localStorage.getItem("playerId");
+    const userId = hostId || playerId;
+    document.getElementById("lobbyBtn").style.display = "none";
+
+    if (roomCode && playerId) {
+      navigator.sendBeacon(
+        "/api/leave-room",
+        JSON.stringify({ roomCode, playerId: userId })
+      );
+
+      localStorage.removeItem("playerId");
+      localStorage.removeItem("proomCode");
+      localStorage.removeItem("playerName");
+      localStorage.setItem("onlineMode", false);
+      window.location.replace("join.html");
+    } else if (roomCode && hostId) {
+      navigator.sendBeacon(
+        "/api/close-room",
+        JSON.stringify({ roomCode, hostId })
+      );
+
+      localStorage.removeItem("hostId");
+      sessionStorage.removeItem("roomCode");
+      localStorage.removeItem("hostName");
+      localStorage.setItem("onlineMode", false);
+
+      window.location.replace("index.html");
+    }
+  });
 });
 window.addEventListener("load", () => {
   const hstroomCode = sessionStorage.getItem("roomCode");
@@ -62,14 +71,20 @@ window.addEventListener("load", () => {
 
   // Listeners
   socket.on("not-all-voted", ({ totalVotes, totalPlayers }) => {
-    alert(`Not all players have voted yet. (${totalVotes}/${totalPlayers})`);
+    document.getElementById("notVoted").style.display = "block";
+    document.getElementById("votedPlayers").textContent = `Not all players have voted yet. (${totalVotes}/${totalPlayers})`;
+    setTimeout(() => {
+        document.getElementById("notVoted").style.display = "none";
+      }, 3000); // 3000ms = 3 seconds
   });
 
   socket.on("phase-changed", ({ state }) => {
     if (state === "results") {
       if (userId === hostId) {
+        sessionStorage.setItem("internalNavigation", "true");
         window.location.href = "end.html";
       }
+      sessionStorage.setItem("internalNavigation", "true");
       window.location.href = "end.html";
     }
   });
@@ -78,22 +93,37 @@ window.addEventListener("load", () => {
       playerCountEl.textContent = `${totalVotes} / ${totalPlayers}`;
   });
   socket.on("return-to-lobby", () => {
-  if (hostId){
-    window.location.href = "game.html";
-  }
-  else{
-    window.location.href = "lobby.html";
-  }
-});
+    if (hostId){
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "game.html";
+    }
+    else{
+      sessionStorage.setItem("errorMsg", "The host ended the game");
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "lobby.html";
+    }
+  });
+  socket.on("room-closed", () => {
+      sessionStorage.setItem("errorMsg", "The host closed the game");
+      sessionStorage.setItem("internalNavigation", "true");
+      localStorage.removeItem("playerId");
+      localStorage.removeItem("proomCode");
+      localStorage.removeItem("playerName");
+      localStorage.setItem("onlineMode", false);
+      window.location.href = "join.html";
+  });
   // Keep a copy of the previous players
   let prevPlayers = [];
 
   socket.on("all-imposters-gone", () => {
     // e.g., end the game or assign new imposters
+    sessionStorage.setItem("errorMsg", "Imposter left the game");
     if (hostId){
+      sessionStorage.setItem("internalNavigation", "true");
       window.location.href = "game.html";
     }
     else{
+      sessionStorage.setItem("internalNavigation", "true");
       window.location.href = "lobby.html";
     }
   });
@@ -116,11 +146,14 @@ window.addEventListener("load", () => {
       setTimeout(() => {
         document.getElementById("left").style.display = "none";
       }, 3000); // 3000ms = 3 seconds
-      if (players.length >3){
+      if (players.length > 3){
+        sessionStorage.setItem("errorMsg", "Not enough players left in the game");
         if (hostId){
+          sessionStorage.setItem("internalNavigation", "true");
           window.location.href = "game.html";
         }
         else{
+          sessionStorage.setItem("internalNavigation", "true");
           window.location.href = "lobby.html";
         }
       }
@@ -219,7 +252,8 @@ window.addEventListener("load", () => {
       const selectedPlayer = playersList.find(p => p.id === selectedVote);
 
       if (!selectedVote) {
-        document.getElementById("voted").style.display = "block";
+        document.getElementById("notVoted").style.display = "block";
+        document.getElementById("votedPlayers").textContent = "Please select a player first";
         return;
       }
       console.log("Submitting vote...");
@@ -234,8 +268,8 @@ window.addEventListener("load", () => {
           roomCode,
           playerId: userName,
           voteTarget: selectedVote
-        });
-        document.getElementById("voted").style.display = "none";
+        });        
+        document.getElementById("notVoted").style.display = "none";
         const yourVoteContainer = document.getElementById("yourVoteContainer");
         const yourVoteEl = document.getElementById("yourVote");
         yourVoteEl.textContent = selectedPlayer.name;
