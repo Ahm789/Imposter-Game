@@ -36,6 +36,12 @@ document.addEventListener("DOMContentLoaded", () => {
     // CRITICAL: remove it immediately
     sessionStorage.removeItem("errorMsg");
   }
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
+  if (roomCode == null){
+    window.location.href = "join.html";
+  }
 });
 // ======================= SOCKET.IO =======================
 const socket = io(); // connect to server

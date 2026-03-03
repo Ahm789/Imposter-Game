@@ -1,9 +1,10 @@
 window.addEventListener("DOMContentLoaded", () => {
   const hstroomCode = sessionStorage.getItem("roomCode");
   const roomCode = hstroomCode;
-  if (roomCode == null){
+   const onlineMode = localStorage.getItem("onlineMode")
+   if (onlineMode === "true" && !roomCode){
     window.location.href = "index.html";
-  }
+   }
 
   window.addEventListener("pagehide", function () {
     const isInternalNav = sessionStorage.getItem("internalNavigation");
