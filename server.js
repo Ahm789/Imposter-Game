@@ -108,7 +108,7 @@ io.on("connection", (socket) => {
       // Notify host of current votes
       io.to(roomCode).emit("vote-update", {
         totalVotes: Object.keys(room.votes).length,
-        totalPlayers: room.players.length
+        totalPlayers: room.players.filter(p => p.playerPlaying).length
       });
 
       // DO NOT automatically advance to results!
@@ -122,7 +122,7 @@ io.on("connection", (socket) => {
       // 🔒 Only host can trigger
       if (room.hostId !== playerId) return;
 
-      const totalPlayers = room.players.length;
+      const totalPlayers = room.players.filter(p => p.playerPlaying).length;
       const totalVotes = Object.keys(room.votes || {}).length;
       
       if (totalVotes === totalPlayers) {
@@ -275,7 +275,7 @@ app.post("/api/join-room", (req, res) => {
   }
 
   const playerId = crypto.randomUUID();
-  rooms[roomCode].players.push({ id: playerId, name: uniqueName });
+  rooms[roomCode].players.push({ id: playerId, name: uniqueName, playerPlaying: rooms[roomCode].state !== "voting" });
 
   // Notify everyone in room about new player
   io.to(roomCode).emit("room-update", rooms[roomCode].players);
@@ -345,6 +345,9 @@ app.post("/api/start-game", (req, res) => {
 
   const room = rooms[roomCode];
   const { players } = room;
+  room.players.forEach(player => {
+    player.playerPlaying = true;  // ✅ everyone is active again
+  });
   const GenreManager = require("./Website/JS/genres.js");
   const genreManager = new GenreManager();
   // Settings from host
