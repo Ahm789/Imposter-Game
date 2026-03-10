@@ -145,7 +145,7 @@ window.addEventListener("load", () => {
       setTimeout(() => {
         document.getElementById("left").style.display = "none";
       }, 3000); // 3000ms = 3 seconds
-      if (players.length > 3){
+      if (players.length < 3){
         sessionStorage.setItem("errorMsg", "Not enough players left in the game");
         if (hostId){
           sessionStorage.setItem("internalNavigation", "true");

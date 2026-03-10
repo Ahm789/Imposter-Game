@@ -91,7 +91,7 @@ io.on("connection", (socket) => {
     // Check if any imposters remain
     const impostersLeft = room.players.some(p => p.role === "imposter");
 
-    if (!impostersLeft) {
+    if (!impostersLeft && room.hasImposters) {
       console.log("All imposters are gone!");
       io.to(roomCode).emit("all-imposters-gone");
     } else {
@@ -367,6 +367,7 @@ app.post("/api/start-game", (req, res) => {
       console.log("Random imposters test: No imposters this game!");
     }
   }
+  room.hasImposters = imposterCount > 0;
   const votingEnabled = settings.voting || false;
   room.settings.votingEnabled = votingEnabled;
 
