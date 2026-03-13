@@ -164,15 +164,25 @@ function showOnlineGameOverlay(gameData) {
 
                 try {
                     const roomCode = localStorage.getItem("proomCode");
-                    const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
-                    const data = await res.json();
                     localStorage.setItem("proomCode", roomCode);
+                    const [voteRes, chatRes] = await Promise.all([
+                    fetch(`/api/check-voting?roomCode=${localStorage.getItem("proomCode")}`),
+                    fetch(`/api/check-chat?roomCode=${localStorage.getItem("proomCode")}`)
+                    ]);
+                    const voteData = await voteRes.json();
+                    const chatData = await chatRes.json();
+
 
                     // Redirect based on server voting status
-                    if (data.votingEnabled) {
-                        sessionStorage.setItem("internalNavigation", "true");
+                    sessionStorage.setItem("internalNavigation", "true");
+
+                    if (chatData.chatEnabled && voteData.votingEnabled) {
+                        window.location.href = "chat.html";
+                    } 
+                    else if (voteData.votingEnabled) {
                         window.location.href = "voting.html";
-                    } else {
+                    }
+                    else {
                         overlay.classList.add("hidden");
                     }
                 } catch (err) {

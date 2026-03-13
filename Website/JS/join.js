@@ -28,7 +28,15 @@ document.getElementById("joinBtn").addEventListener("click", () => {
     })
     .then(res => res.json())
     .then(data => {
-      if(data.error) return console.log(data.error);
+      if (data.error) {
+        // Show error if server returns an error
+        document.getElementById("errors").style.display = "block";
+        document.getElementById("error").textContent = "You have entered the wrong room code";
+        setTimeout(() => {
+          document.getElementById("errors").style.display = "none";
+        }, 5000);
+        return; // stop execution
+      }
       // Store the room code for later
       localStorage.setItem("proomCode", roomCodeInput);
       localStorage.setItem("hostName", "")

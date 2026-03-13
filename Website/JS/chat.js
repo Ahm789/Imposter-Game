@@ -1,17 +1,115 @@
+window.addEventListener("DOMContentLoaded", () => {
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
+  if (roomCode == null){
+    window.location.href = "index.html";
+  }
+  window.addEventListener("pagehide", function () {
+    const isInternalNav = sessionStorage.getItem("internalNavigation");
+    // If this is internal navigation, don't leave room
+    if (isInternalNav === "true") {
+      sessionStorage.removeItem("internalNavigation");
+      return;
+    }
+    // Immediately block backward navigation
+
+    const hstroomCode = sessionStorage.getItem("roomCode");
+    const proomCode = localStorage.getItem("proomCode");
+    const roomCode = hstroomCode || proomCode;
+
+    const hostId = localStorage.getItem("hostId");
+    const playerId = localStorage.getItem("playerId");
+    const userId = hostId || playerId;
+    document.getElementById("lobbyBtn").style.display = "none";
+
+    if (roomCode && playerId) {
+      navigator.sendBeacon(
+        "/api/leave-room",
+        JSON.stringify({ roomCode, playerId: userId })
+      );
+
+      localStorage.removeItem("playerId");
+      localStorage.removeItem("proomCode");
+      localStorage.removeItem("playerName");
+      localStorage.setItem("onlineMode", false);
+      window.location.replace("join.html");
+    } else if (roomCode && hostId) {
+      navigator.sendBeacon(
+        "/api/close-room",
+        JSON.stringify({ roomCode, hostId })
+      );
+
+      localStorage.removeItem("hostId");
+      sessionStorage.removeItem("roomCode");
+      localStorage.removeItem("hostName");
+      localStorage.setItem("onlineMode", false);
+
+      window.location.replace("index.html");
+    }
+  });
+});
 const socket = io(); // connect to server
 window.addEventListener("load", async () => {
-  const roomCode = localStorage.getItem("proomCode") || sessionStorage.getItem("roomCode");
-  const userId = localStorage.getItem("hostId") || localStorage.getItem("playerId");
+  const hstroomCode = sessionStorage.getItem("roomCode");
+  const proomCode = localStorage.getItem("proomCode");
+  const roomCode = hstroomCode || proomCode;
+  const playerName = localStorage.getItem("playerName");
+  const hostName = localStorage.getItem("hostName");
+
+  const userName = hostName || playerName;
+  const hostId = localStorage.getItem("hostId");
+  const playerId = localStorage.getItem("playerId");
+  const userId = hostId || playerId;
   console.log("Room code:", roomCode);
   document.getElementById("backBtn").addEventListener("click", () => {
     sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "voting.html";
   });
-  document.getElementById("backBtn").addEventListener("click", () => {
-    sessionStorage.setItem("internalNavigation", "true");
-    window.location.href = "voting.html";
-  });
   loadmessages(roomCode, userId);
+  socket.on("return-to-lobby", () => {
+    if (hostId){
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "game.html";
+    }
+    else{
+      sessionStorage.setItem("errorMsg", "The host ended the game");
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "lobby.html";
+    }
+  });
+  socket.on("room-closed", () => {
+      sessionStorage.setItem("errorMsg", "The host closed the game");
+      sessionStorage.setItem("internalNavigation", "true");
+      localStorage.removeItem("playerId");
+      localStorage.removeItem("proomCode");
+      localStorage.removeItem("playerName");
+      localStorage.setItem("onlineMode", false);
+      window.location.href = "join.html";
+  });
+
+  socket.on("all-imposters-gone", () => {
+    // e.g., end the game or assign new imposters
+    sessionStorage.setItem("errorMsg", "Imposter left the game");
+    if (hostId){
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "game.html";
+    }
+    else{
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "lobby.html";
+    }
+  });
+  socket.on("phase-changed", ({ state }) => {
+    if (state === "results") {
+      if (userId === hostId) {
+        sessionStorage.setItem("internalNavigation", "true");
+        window.location.href = "end.html";
+      }
+      sessionStorage.setItem("internalNavigation", "true");
+      window.location.href = "end.html";
+    }
+  });
 });
 async function loadmessages(roomCode, userId) {
    try {
