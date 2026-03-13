@@ -7,7 +7,7 @@ window.addEventListener("DOMContentLoaded", () => {
   const roomCode = hstroomCode || proomCode;
 
   // If user somehow opens end.html without a room
-  if (!roomCode) {
+  if (!roomCode && localStorage.getItem("onlineMode") === "true") {
     window.location.href = "index.html";
     return;
   }

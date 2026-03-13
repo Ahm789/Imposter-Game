@@ -111,6 +111,14 @@ window.addEventListener("load", async () => {
     }
   });
 });
+const playerColors = [
+  "#e74c3c", "#3498db", "#2ecc71",
+  "#f1c40f", "#9b59b6", "#1abc9c",
+  "#e67e22", "#ff66cc"
+];
+
+const userColorMap = {};
+let colorIndex = 0;
 async function loadmessages(roomCode, userId) {
    try {
     const res = await fetch(`/api/get-messages?roomCode=${roomCode}&userId=${userId}`);
@@ -118,23 +126,39 @@ async function loadmessages(roomCode, userId) {
     console.log("Messages in room:", data.messages);
     const chatContainer = document.getElementById("chatMessages");
     chatContainer.innerHTML = ""; // clear old messages
-
+    
     data.messages.forEach(msg => {
 
-      const isSelf = msg.userId === userId;
+    const isSelf = msg.userId === userId;
 
-      const messageHTML = `
-        <div class="chat-message ${isSelf ? "self" : "other"}">
-            <div class="player-name">${isSelf ? "You" : msg.name}</div>
-            <div class="message-bubble">
-                ${msg.text}
-            </div>
-        </div>
-      `;
+    let playerColor;
 
-      chatContainer.insertAdjacentHTML("beforeend", messageHTML);
+    if (isSelf) {
+      // Always green for the current user
+      playerColor = "#2ecc71";
+    } else {
+      // Assign color to other players
+      if (!userColorMap[msg.userId]) {
+        userColorMap[msg.userId] = playerColors[colorIndex % playerColors.length];
+        colorIndex++;
+      }
+      playerColor = userColorMap[msg.userId];
+    }
 
-    });
+    const messageHTML = `
+      <div class="chat-message ${isSelf ? "self" : "other"}">
+          <div class="player-name" style="color:${playerColor}">
+              ${isSelf ? "You" : msg.name}
+          </div>
+          <div class="message-bubble" style="border-color:${playerColor}">
+              ${msg.text}
+          </div>
+      </div>
+    `;
+
+    chatContainer.insertAdjacentHTML("beforeend", messageHTML);
+
+  });
 
     // scroll to newest message
     chatContainer.scrollTop = chatContainer.scrollHeight;
@@ -175,13 +199,46 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   socket.emit("join-room", { roomCode, userId, userName });
+  const typingUsers = new Map(); // userId -> userName
+
   socket.on("typing", ({ userId: typingUserId, userName, typing }) => {
     console.log(`Received typing event from user ${typingUserId}: typing=${typing}`, { userName, typing });
-    document.getElementById("typingIndicator").classList.remove("hidden");
+
     if (typing) {
-      document.querySelector(".typing-name").textContent = typingUserId === userId ? "You" : `Player ${userName}`;
+      typingUsers.set(typingUserId, {
+        name: typingUserId === userId ? "You" : userName,
+        id: typingUserId
+      });
     } else {
-      document.getElementById("typingIndicator").classList.add("hidden");
+      typingUsers.delete(typingUserId);
+    }
+
+    const indicator = document.getElementById("typingIndicator");
+    const nameEl = document.querySelector(".typing-name");
+
+    if (typingUsers.size > 0) {
+      indicator.classList.remove("hidden");
+
+      const namesHTML = Array.from(typingUsers.values()).map(user => {
+
+        let color;
+
+        if (user.id === userId) {
+          color = "#2ecc71"; // Always green for self
+        } else {
+          if (!userColorMap[user.id]) {
+            userColorMap[user.id] = playerColors[colorIndex % playerColors.length];
+            colorIndex++;
+          }
+          color = userColorMap[user.id];
+        }
+
+        return `<span style="color:${color}">${user.name}</span>`;
+      });
+
+      nameEl.innerHTML = namesHTML.join(" & ") + " typing...";
+    } else {
+      indicator.classList.add("hidden");
     }
   });
   document.getElementById("sendBtn").addEventListener("click", async () => {

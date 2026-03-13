@@ -106,7 +106,6 @@ function startLocalGame() {
     let difficulty = (localStorage.getItem("difficulty") || "Medium").toLowerCase(); // normalize
     const hintToggle = localStorage.getItem("hintToggle") || "Yes";
     let selectedGenre = localStorage.getItem("genre") || "Random";
-
     // Get random word object from the genre
     selectedWordObj = genreManager.getRandomWord(selectedGenre);
     selectedGenre = localStorage.getItem("Gamegenre");
