@@ -1,28 +1,23 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Host Room Settings</title>
-  <link rel="stylesheet" href="settings.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Host Room</title>
+  <link rel="stylesheet" href="settings.css" />
 </head>
 <body>
 
-<div class="phone-container">
-  <div class="card host-card">
-    <h2 class="section-title">Game Settings</h2>
+  <div class="phone-container">
+    <div class="card host-card">
 
-    <!-- Tabs -->
-    <div class="settings-tabs">
-      <button data-tab="general" class="tab-btn active">General</button>
-      <button data-tab="online" class="tab-btn" id="onlineTabBtn">Online</button>
-    </div>
+      <!-- Title -->
+      <h2 class="section-title">Game Settings</h2>
 
-    <!-- Tab Contents -->
-    <div class="settings-content">
+      <!-- Game Settings Card -->
+      <div class="settings-card">
+        <h3 class="card-title">General Settings</h3>
 
-      <!-- General Settings -->
-      <div data-content="general" class="tab-content active">
         <div class="form-group">
           <label for="genre">Genre</label>
           <select id="genre">
@@ -35,7 +30,11 @@
           </select>
         </div>
 
-        <div class="form-group" id="playersGroup">
+      <!-- Player Settings Card -->
+      <div class="settings-card">
+        <h3 class="card-title">Player Settings</h3>
+
+        <div class="form-group">
           <label for="players">Number of Players</label>
           <select id="players">
             <option>3</option>
@@ -46,7 +45,20 @@
             <option>8</option>
           </select>
         </div>
-
+        <div class="form-group hidden" id="votingGroup">
+            <label for="voting">Enable Voting</label>
+            <select id="voting">
+              <option>Yes</option>
+              <option>No</option>
+            </select>
+        </div>
+        <div class="form-group hidden" id="chatGroup">
+            <label for="chat">Enable Chat</label>
+            <select id="chat">
+              <option>Yes</option>
+              <option>No</option>
+            </select>
+        </div>
         <div class="form-group">
           <label for="imposters">Number of Imposters</label>
           <select id="imposters">
@@ -55,7 +67,6 @@
             <option>2</option>
           </select>
         </div>
-
         <div class="form-group">
           <label for="zimposters">Randomly Select No Imposters</label>
           <select id="zimposters">
@@ -63,9 +74,8 @@
             <option>No</option>
           </select>
         </div>
-
         <div class="form-group">
-          <label for="chance">Chance for No Imposters</label>
+          <label for="chance">The Chance For No Imposters</label>
           <select id="chance">
             <option>0.1</option>
             <option>0.2</option>
@@ -80,13 +90,13 @@
         </div>
 
         <div class="form-group">
-          <label for="hintToggle">Hint for Imposter</label>
+          <label for="hintToggle">Hint For Imposter</label>
           <select id="hintToggle">
             <option>Yes</option>
             <option>No</option>
           </select>
         </div>
-
+        
         <div class="form-group">
           <label for="difficulty">Imposter Difficulty</label>
           <select id="difficulty">
@@ -95,41 +105,16 @@
             <option>Hard</option>
           </select>
         </div>
+
       </div>
 
-      <!-- Online Settings -->
-      <div data-content="online" class="tab-content">
-        <div class="form-group" id="votingGroup">
-          <label for="voting">Enable Voting</label>
-          <select id="voting">
-            <option>Yes</option>
-            <option>No</option>
-          </select>
-        </div>
-
-        <div class="form-group" id="chatGroup">
-          <label for="chat">Enable Chat</label>
-          <select id="chat">
-            <option>Yes</option>
-            <option>No</option>
-          </select>
-        </div>
-
-        <!-- Future Online Features Here -->
-        <!-- e.g., AI chat, word limit, max AI cap -->
+      <!-- Buttons -->
+      <div class="button-group">
+        <button id="backBtn" class="main-btn secondary">Back</button>
       </div>
 
     </div>
-
-    <!-- Buttons -->
-    <div class="button-group">
-      <button id="backBtn" class="main-btn secondary">Back</button>
-    </div>
-
   </div>
-</div>
-
 <script src="JS/settings.js"></script>
-
 </body>
 </html>

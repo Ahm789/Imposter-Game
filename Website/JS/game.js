@@ -309,7 +309,6 @@ function startOnlineGame() {
     const backBtn = document.getElementById("backBtn");
     let playerCount = 0;
     const roomCode = sessionStorage.getItem("roomCode");
-    const restart = localStorage.getItem("restart");
     const hostId = localStorage.getItem("hostId"); // host's ID
     const hostName = localStorage.getItem("hostName");
     // Redirect if not in a room

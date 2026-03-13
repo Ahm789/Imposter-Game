@@ -793,3 +793,43 @@ p {
 .bottom-icon:active {
   transform: scale(0.95);
 }
+/* =========================
+   TAB SYSTEM
+========================= */
+
+.tab-bar {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  margin: 25px 0;
+}
+
+.tab-btn {
+  flex: 1;
+  max-width: 140px;
+  padding: 10px 15px;
+  font-size: 15px;
+  font-weight: bold;
+  border: none;
+  border-radius: 10px;
+  background: #dcdcdc;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.tab-btn:hover {
+  background: #c8c8c8;
+}
+
+.tab-btn.active {
+  background: #333;
+  color: white;
+}
+
+.tab-content {
+  display: none;
+}
+
+.tab-content.active {
+  display: block;
+}

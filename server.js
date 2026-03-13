@@ -60,7 +60,7 @@ io.on("connection", (socket) => {
     room.state = "playing";
     room.votes = {}; 
     room.word = null; // or pick a new word if needed
-
+    rooms[roomCode].lastActivity = Date.now();
     // Notify everyone
     io.to(roomCode).emit("phase-changed", { state: "playing", restart: true });
   });
@@ -93,7 +93,7 @@ io.on("connection", (socket) => {
         else if (room.state === "voting") room.state = "results";
         else if (room.state === "results") room.state = "ended";
       }
-
+      rooms[roomCode].lastActivity = Date.now();
       io.to(roomCode).emit("phase-changed", { state: room.state });
     });
   socket.on("player-left", ({ roomCode }) => {
@@ -195,6 +195,7 @@ io.on("connection", (socket) => {
           })),
           correctWord: room.word
         };
+        rooms[roomCode].lastActivity = Date.now();
         io.to(roomCode).emit("phase-changed", {
           state: "results",
           results: room.results
@@ -265,7 +266,8 @@ app.post("/api/create-room", (req, res) => {
   rooms[roomCode] = {
     hostId,
     players: [{ id: hostId, name }],
-    settings: { imposters: 1}
+    settings: { imposters: 1},
+    lastActivity: Date.now()
   };
 
   res.json({ roomCode, hostId ,name});
@@ -440,6 +442,7 @@ app.post("/api/start-game", (req, res) => {
     room.state = "voting";
     room.votes = {}; // reset votes
     // Emit phase change to everyone immediately
+    rooms[roomCode].lastActivity = Date.now();
     io.to(roomCode).emit("phase-changed", { state: "voting" });
   }
   res.json({ success: true });
@@ -574,6 +577,37 @@ function getMessages(roomCode) {
   if (!rooms[roomCode]) return [];
   return rooms[roomCode].messages; // already ordered first-come, first-serve
 }
+app.get("/api/active-rooms", (req, res) => {
+  const now = Date.now();
+
+  const activeRooms = Object.entries(rooms)
+    .filter(([code, room]) => {
+      const isActive = room.lastActivity && (now - room.lastActivity < 5 * 60 * 1000);
+      const chatEnabled = room.chat !== false; // exclude if chat explicitly false
+      return isActive && chatEnabled;
+    })
+    .map(([code]) => code);
+
+  res.json(activeRooms);
+});
+// POST /api/set-chat
+// Body: { roomCode: "ABCD", chat: "Yes" or "No" }
+app.post("/api/set-chat", (req, res) => {
+  const { roomCode, chat } = req.body;
+  if (!roomCode || typeof chat === "undefined") {
+    return res.status(400).json({ error: "Missing roomCode or chat value" });
+  }
+
+  if (!rooms[roomCode]) {
+    rooms[roomCode] = { messages: [], lastActivity: Date.now() };
+  }
+
+  rooms[roomCode].chat = chat === "Yes"; // store as boolean
+  rooms[roomCode].lastActivity = Date.now(); // mark activity
+
+  console.log(`Room ${roomCode} chat set to: ${chat}`);
+  res.json({ success: true });
+});
 // ===================== START SERVER =====================
 http.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

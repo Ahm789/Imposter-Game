@@ -1,7 +1,7 @@
 document.getElementById("backBtn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
-document.getElementById("hostBtn").addEventListener("click", () => {
+document.getElementById("hostBtn").addEventListener("click", async () => {
   const nameInput = document.getElementById("nameInput").value.trim();
     if (nameInput === "") {
         document.getElementById("rhostName").style.display = "block";
@@ -12,22 +12,42 @@ document.getElementById("hostBtn").addEventListener("click", () => {
         return;
     }
     // Store the player's name in localStorage for later use
-    fetch("/api/create-room", { /*Send the user data in JSON to the API */
-            method:"POST",
-            headers: {"Content-Type": "application/json"},
-            body: JSON.stringify({ name: nameInput})
-          })
-    .then(res => res.json())
-    .then(data => {
-      if(data.error) return console.log(data.error);
-      // Store the room code for later
+    try {
+      const createRes = await fetch("/api/create-room", {
+        method:"POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({ name: nameInput})
+      });
+      const data = await createRes.json();
+
+      if (data.error) return console.log(data.error);
+
+      // Save session/local data
       sessionStorage.setItem("roomCode", data.roomCode);
-      sessionStorage.setItem("errorMsg", "");
-      // Redirect to lobby or game page
       localStorage.setItem("onlineMode", "true");
-      window.location.href = "game.html";
       localStorage.setItem("hostId", data.hostId);
       localStorage.setItem("hostName", data.name);
-    })
-    .catch(err => console.error("Error creating room:", err));
+
+      // Send chat to API
+      const chatValue = localStorage.getItem("chat") || "No";
+      const roomCode = data.roomCode; // use the newly created room code
+
+      const chatRes = await fetch("/api/set-chat", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ roomCode, chat: chatValue })
+      });
+
+      if (!chatRes.ok) {
+        console.error("Failed to send chat status:", chatRes.statusText);
+      } else {
+        console.log("Chat status sent successfully");
+      }
+
+      // Redirect
+      window.location.href = "game.html";
+
+    } catch(err) {
+      console.error("Error creating room or sending chat:", err);
+    }
 });

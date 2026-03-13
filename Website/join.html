@@ -9,27 +9,46 @@
 <body>
 
   <div class="phone-container">
-    <div class="card">
+  <div class="card">
 
-      <div class="title-section">
-        <h1>Odd One out Game</h1>
-        <p class="subtitle">Find the imposter.</p>
-        <p id="errors" style="display: none;">
-          <span id="error" style="color: red;"></span>
-        </p>
-      </div>
+    <div class="title-section">
+      <h1>Odd One out Game</h1>
+      <p class="subtitle">Find the imposter.</p>
+
+      <p id="errors" style="display: none;">
+        <span id="error" style="color: red;"></span>
+      </p>
+    </div>
+
+    <!-- Tabs -->
+    <div class="tab-bar">
+      <button class="tab-btn active" data-tab="joinTab">Join Room</button>
+      <button class="tab-btn" data-tab="roomsTab">Active Rooms</button>
+    </div>
+
+    <!-- JOIN ROOM TAB -->
+    <div id="joinTab" class="tab-content active">
 
       <div class="button-group">
         <input type="text" id="nameInput" placeholder="Enter your name" class="name-input" />
         <input type="text" id="roomCodeInput" placeholder="Enter room code" class="name-input" />
-        <button id="joinBtn" class="main-btn secondary">Join Game</button>
-        
-        <button id="backBtn" class="main-btn secondary">Back</button>
+
+        <button id="joinBtn" class="main-btn">Join Game</button>
+        <button id="backBtn" class="main-btn">Back</button>
       </div>
 
     </div>
-  </div>
 
+    <!-- ACTIVE ROOMS TAB -->
+    <div id="roomsTab" class="tab-content">
+
+      <div id="roomsList" class="button-group3">
+        <p class="p-muted">No active rooms yet</p>
+      </div>
+
+    </div>
+</div>
+  <script src="/socket.io/socket.io.js"></script>
   <script src="/JS/join.js"></script>
 </body>
 </html>

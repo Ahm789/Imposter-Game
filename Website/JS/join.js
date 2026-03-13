@@ -1,6 +1,59 @@
 document.getElementById("backBtn").addEventListener("click", () => {
   window.location.href = "index.html";
 });
+const tabs = document.querySelectorAll(".tab-btn");
+const contents = document.querySelectorAll(".tab-content");
+
+tabs.forEach(tab => {
+  tab.addEventListener("click", () => {
+
+    tabs.forEach(t => t.classList.remove("active"));
+    contents.forEach(c => c.classList.remove("active"));
+
+    tab.classList.add("active");
+
+    const target = document.getElementById(tab.dataset.tab);
+    target.classList.add("active");
+
+  });
+});
+async function loadActiveRooms() {
+
+  try {
+
+    const res = await fetch("/api/active-rooms");
+    const rooms = await res.json();
+
+    const container = document.getElementById("roomsList");
+    container.innerHTML = "";
+
+    if (rooms.length === 0) {
+      container.innerHTML = "<p class='p-muted'>No active rooms</p>";
+      return;
+    }
+
+    rooms.forEach(room => {
+
+      const btn = document.createElement("button");
+      btn.className = "main-btn";
+      btn.textContent = `Room ${room}`;
+
+      btn.onclick = () => {
+        document.getElementById("roomCodeInput").value = room;
+        document.querySelector('[data-tab="joinTab"]').click();
+      };
+
+      container.appendChild(btn);
+
+    });
+
+  } catch (err) {
+    console.error("Failed to load rooms", err);
+  }
+
+}
+loadActiveRooms();
+setInterval(loadActiveRooms, 1000);
 document.getElementById("joinBtn").addEventListener("click", () => {
   const nameInput = document.getElementById("nameInput").value.trim();
     if (nameInput === "") {
