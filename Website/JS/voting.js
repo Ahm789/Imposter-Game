@@ -51,7 +51,7 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
-window.addEventListener("load", () => {
+window.addEventListener("load", async () => {
   const hstroomCode = sessionStorage.getItem("roomCode");
   const proomCode = localStorage.getItem("proomCode");
   const roomCode = hstroomCode || proomCode;
@@ -63,7 +63,22 @@ window.addEventListener("load", () => {
   const hostId = localStorage.getItem("hostId");
   const playerId = localStorage.getItem("playerId");
   const userId = hostId || playerId;
-
+  try {
+        const res = await fetch(`/api/check-chat?roomCode=${roomCode}`);
+        const data = await res.json();
+        if (data.chatEnabled) {
+            document.getElementById("chatBtn").style.display = "block";
+        } else {
+            document.getElementById("chatBtn").style.display = "none";
+        }
+        console.log("Chat enabled:", data.chatEnabled);
+    } catch (err) {
+        console.error("Failed to load players:", err);
+    }
+  document.getElementById("chatBtn").addEventListener("click", () => {
+    sessionStorage.setItem("internalNavigation", "true");
+    window.location.href = "chat.html";
+  });
   socket.emit("join-room", { roomCode, userId });
   socket.emit("player-left", { roomCode, playerId });
   const advanceBtn = document.getElementById("resultsBtn");
@@ -88,6 +103,14 @@ window.addEventListener("load", () => {
     }
   });
   const playerCountEl = document.getElementById("playerCount");
+  try {
+        const res = await fetch(`/api/get-votes?roomCode=${roomCode}`);
+        const data = await res.json();
+        playerCountEl.textContent = data.totalVotes + " / " + data.totalPlayers;
+        console.log("Initial votes:", data);
+    } catch (err) {
+        console.error("Failed to load players:", err);
+    }
     socket.on("vote-update", ({ totalVotes, totalPlayers }) => {
       playerCountEl.textContent = `${totalVotes} / ${totalPlayers}`;
   });
@@ -207,7 +230,7 @@ window.addEventListener("load", () => {
   // =========================
   // TEST: Populate dropdown with host Name
   // =========================
-
+  
   loadPlayers();
   let playersList = []; // store all players globally
   async function loadPlayers() {
@@ -243,7 +266,25 @@ window.addEventListener("load", () => {
   // Submit Vote (Test Mode)
   // =========================
   const submitBtn = document.getElementById("submitVoteBtn");
-
+  try {
+            const res = await fetch(`/api/voted-player?roomCode=${roomCode}&userName=${userName}`);
+            const data = await res.json();
+            console.log("Voted player data:", data);
+            if(data.votedPlayerName) {
+              console.log("Already voted for:", data.votedPlayerName);
+              document.getElementById("notVoted").style.display = "none";
+              const yourVoteContainer = document.getElementById("yourVoteContainer");
+              const yourVoteEl = document.getElementById("yourVote");
+              yourVoteEl.textContent = data.votedPlayerName;
+              yourVoteContainer.style.display = "block"; // reveal
+              submitBtn.textContent = "Vote Submitted";
+              submitBtn.disabled = true;
+              const dropdown = document.getElementById("voteDropdown");
+              dropdown.disabled = true;
+            }
+        } catch (err) {
+            console.error("Failed to load players:", err);
+        }
   if (submitBtn) {
     submitBtn.addEventListener("click", () => {
 

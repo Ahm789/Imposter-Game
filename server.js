@@ -19,7 +19,6 @@ function generateRoomCode() {
 }
 
 // ===================== SOCKET CONNECTION =====================
-const roomSockets = {}; // roomCode => [socket.id]
 
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
@@ -39,6 +38,19 @@ io.on("connection", (socket) => {
     console.log(`Player ${playerId} joined room ${roomCode}`);
 
     io.to(roomCode).emit("room-update", room.players);
+  });
+  socket.on("typing", ({ userId, userName, typing }) => {
+    console.log(`Received typing event from ${userId}: typing=${typing}`), { userName, typing };
+    // broadcast to everyone in the room except sender
+    const rooms = Array.from(socket.rooms).filter(r => r !== socket.id); // get rooms socket is in
+    rooms.forEach(roomCode => {
+      socket.to(roomCode).emit("typing", { userId, userName, typing });
+    });
+  });
+  socket.on("message", ({ roomCode, userId, userName, message }) => {
+    console.log(`Received message from ${userName} (${userId}) in room ${roomCode}: ${message}`);
+    addMessage(roomCode, userId, userName, message);
+    io.to(roomCode).emit("new-message", { userId, userName, message });
   });
   socket.on("restart-game", ({ roomCode, hostId }) => {
     const room = rooms[roomCode];
@@ -345,6 +357,7 @@ app.post("/api/start-game", (req, res) => {
 
   const room = rooms[roomCode];
   const { players } = room;
+  rooms[roomCode].messages = [];
   room.players.forEach(player => {
     player.playerPlaying = true;  // ✅ everyone is active again
   });
@@ -369,6 +382,9 @@ app.post("/api/start-game", (req, res) => {
   }
   room.hasImposters = imposterCount > 0;
   const votingEnabled = settings.voting || false;
+  const chatEnabled = settings.chat || false;
+  console.log("Chat enabled for this game:", chatEnabled, "Voting enabled for this game:", votingEnabled);
+  room.settings.chatEnabled = chatEnabled;
   room.settings.votingEnabled = votingEnabled;
 
   // Use your genreManager (or similar) to get a random word
@@ -436,6 +452,14 @@ app.get("/api/check-voting", (req, res) => {
   const room = rooms[roomCode];
   res.json({ votingEnabled: room.settings.votingEnabled || false});
 });
+app.get("/api/check-chat", (req, res) => {
+  const { roomCode } = req.query;
+  if (!roomCode || !rooms[roomCode]) return res.json({ chatEnabled: false });
+
+  const room = rooms[roomCode];
+  res.json({ chatEnabled: room.settings.chatEnabled || false});
+});
+
 app.get("/api/get-results", (req, res) => {
   const { roomCode } = req.query;
 
@@ -485,6 +509,71 @@ app.get("/api/current-game/:roomCode", (req, res) => {
         }
     });
 });
+app.post("/api/send-message", (req, res) => {
+
+  const { roomCode, playerName, message, userId } = req.body;
+
+  if (!roomCode || !playerName || !message || !userId) {
+    return res.status(400).json({
+      error: "Missing data",
+      roomCode,
+      playerName,
+      message,
+      userId
+    });
+  }
+
+  addMessage(roomCode, userId, playerName, message);
+
+  return res.json({ message: "Message sent" });
+
+});
+app.get("/api/get-votes", (req, res) => {
+  const { roomCode } = req.query;
+  if (!roomCode || !rooms[roomCode]) {
+    return res.status(400).json({ error: "Room not found" });
+  }
+
+  const room = rooms[roomCode];
+  res.json({ totalVotes: Object.keys(room.votes).length, totalPlayers: room.players.filter(p => p.playerPlaying).length});
+});
+app.get("/api/voted-player", (req, res) => {
+  const { roomCode, userName } = req.query;
+  if (!roomCode || !rooms[roomCode]) {
+    return res.status(400).json({ error: "Room not found" });
+  }
+  const room = rooms[roomCode];
+  const votedPlayerId = room.votes[userName];
+  const votedPlayer = room.players.find(p => p.id === votedPlayerId);
+  console.log("Current votes in room:", room.votes);
+  res.json({ votedPlayerName: votedPlayer ? votedPlayer.name : null });
+});
+// Getting messages
+app.get("/api/get-messages", (req, res) => {
+  const { roomCode } = req.query;
+  if (!roomCode) return res.status(400).json({ error: "Missing roomCode" });
+
+  const messages = getMessages(roomCode);
+  return res.json({ messages });
+});
+function addMessage(roomCode, userId, playerName, messageText) {
+
+  if (!rooms[roomCode]) {
+    rooms[roomCode] = { messages: [] };
+  }
+
+  console.log(`Adding message to room ${roomCode}: ${playerName}: ${messageText}`);
+
+  rooms[roomCode].messages.push({
+    userId: userId,
+    name: playerName,
+    text: messageText
+  });
+}
+function getMessages(roomCode) {
+  if (!rooms[roomCode]) return [];
+  return rooms[roomCode].messages; // already ordered first-come, first-serve
+}
 // ===================== START SERVER =====================
 http.listen(PORT, () => {
   console.log(`Server running on http://localhost:${PORT}`);

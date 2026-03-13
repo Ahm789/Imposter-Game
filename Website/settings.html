@@ -30,19 +30,6 @@
           </select>
         </div>
 
-        <div class="form-group">
-          <label for="ageRange">Age Range</label>
-          <select id="ageRange">
-            <option>All</option>
-            <option>6-12</option>
-            <option>13-17</option>
-            <option>18-25</option>
-            <option>26-40</option>
-            <option>40+</option>
-          </select>
-        </div>
-      </div>
-
       <!-- Player Settings Card -->
       <div class="settings-card">
         <h3 class="card-title">Player Settings</h3>
@@ -59,11 +46,18 @@
           </select>
         </div>
         <div class="form-group hidden" id="votingGroup">
-                  <label for="voting">Enable Voting</label>
-                  <select id="voting">
-                    <option>Yes</option>
-                    <option>No</option>
-                  </select>
+            <label for="voting">Enable Voting</label>
+            <select id="voting">
+              <option>Yes</option>
+              <option>No</option>
+            </select>
+        </div>
+        <div class="form-group hidden" id="chatGroup">
+            <label for="chat">Enable Chat</label>
+            <select id="chat">
+              <option>Yes</option>
+              <option>No</option>
+            </select>
         </div>
         <div class="form-group">
           <label for="imposters">Number of Imposters</label>
@@ -128,6 +122,7 @@
     const difficulty = document.getElementById("difficulty");
     const noImposters = document.getElementById("zimposters");
     const chance = document.getElementById("chance");
+    const voting = document.getElementById("voting");
 
     // Function to update difficulty state
     function updateDifficultyState() {
@@ -149,18 +144,43 @@
         chance.disabled = false;
         }
     }
-    if(localStorage.getItem("onlineMode") === "true") {
-        document.getElementById("players").classList.add("hidden");
-        document.querySelector("label[for='players']").classList.add("hidden");
-        document.getElementById("votingGroup").classList.remove("hidden");
+    function onloadSettings() {
+      if(localStorage.getItem("onlineMode") === "true") {
+          document.getElementById("players").classList.add("hidden");
+          document.querySelector("label[for='players']").classList.add("hidden");
+          document.getElementById("votingGroup").classList.remove("hidden");
+          document.getElementById("chatGroup").classList.remove("hidden");
+      }
+      else{
+          document.getElementById("players").classList.remove("hidden");
+          document.querySelector("label[for='players']").classList.remove("hidden");
+          document.getElementById("votingGroup").classList.add("hidden");
+          document.getElementById("chatGroup").classList.add("hidden");
+      }
+    }
+    function updateVotingChat() {
+        if (voting.value === "No") {
+            document.getElementById("chatGroup").classList.add("hidden");
+        } else {
+            document.getElementById("chatGroup").classList.remove("hidden");
+        }
+    }
+    if(localStorage.getItem("voting") === "No") {
+        document.getElementById("chatGroup").classList.remove("hidden");
+        localStorage.setItem("chat", "No");
     }
     // Initial check on load
+    onloadSettings();
+    updateVotingChat();
     updateDifficultyState();
     imposterchance();
 
     // Listen for changes
     hintToggle.addEventListener("change", () => {
         updateDifficultyState();
+    });
+    voting.addEventListener("change", () => {
+        updateVotingChat();
     });
     noImposters.addEventListener("change", () => {
         imposterchance();
@@ -175,10 +195,13 @@
     document.getElementById("hintToggle").value = localStorage.getItem("hintToggle") || "Yes";
     document.getElementById("voting").value = localStorage.getItem("voting") || "No";
     document.getElementById("genre").value = localStorage.getItem("genre") || "Random";
-    document.getElementById("ageRange").value = localStorage.getItem("ageRange") || "All";
+    document.getElementById("chat").value = localStorage.getItem("chat") || "No";
 
     // Make sure state is correct after loading saved value
     updateDifficultyState();
+      onloadSettings();
+      updateVotingChat();
+      imposterchance();
     });
 
 
@@ -193,7 +216,7 @@
         localStorage.setItem("difficulty", document.getElementById("difficulty").value);
         localStorage.setItem("hintToggle", document.getElementById("hintToggle").value);
         localStorage.setItem("genre", document.getElementById("genre").value);
-        localStorage.setItem("ageRange", document.getElementById("ageRange").value);
+        localStorage.setItem("chat", document.getElementById("chat").value);
 
         // Determine which page to go back to
         const prevPage = localStorage.getItem("previousPage") || "game.html";

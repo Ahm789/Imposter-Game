@@ -106,7 +106,6 @@ function startLocalGame() {
     let difficulty = (localStorage.getItem("difficulty") || "Medium").toLowerCase(); // normalize
     const hintToggle = localStorage.getItem("hintToggle") || "Yes";
     let selectedGenre = localStorage.getItem("genre") || "Random";
-    const ageRange = localStorage.getItem("ageRange") || "All";
 
     // Get random word object from the genre
     selectedWordObj = genreManager.getRandomWord(selectedGenre);
@@ -372,11 +371,11 @@ function startOnlineGame() {
         sessionStorage.setItem("internalNavigation", "true");
         window.location.href = "create.html";
     });
-
+    
     // ==================== START GAME ====================
     // Start button click
     startBtn.addEventListener("click", () => {
-      if (playerCount < 3){
+      if (playerCount > 3){
           // Show it however you want
           document.getElementById("rhostName").style.display = "block";
           document.getElementById("errorMsg").textContent = "Not enough players";
@@ -404,7 +403,8 @@ function startOnlineGame() {
             difficulty: localStorage.getItem("difficulty"),
             hintToggle: localStorage.getItem("hintToggle"),
             genre: localStorage.getItem("genre"),
-            voting: localStorage.getItem("voting") === "Yes"
+            voting: localStorage.getItem("voting") === "Yes",
+            chat: localStorage.getItem("chat") === "Yes",
           }
         })
       });
@@ -493,23 +493,30 @@ function startOnlineGame() {
               overlay.classList.add("hidden");
 
               try {
-                  const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
-                  const data = await res.json();
 
-                  // Redirect based on server voting status
-                  if (data.votingEnabled) {
-                    sessionStorage.setItem("internalNavigation", "true");
-                      window.location.href = "voting.html";
-                  } else {
-                    sessionStorage.setItem("internalNavigation", "true");
-                      window.location.href = "end.html";
-                  }
-              } catch (err) {
-                  console.error("Failed to check voting:", err);
-                  // fallback
-                  sessionStorage.setItem("internalNavigation", "true");
-                  window.location.href = "end.html";
-              }
+                const [voteRes, chatRes] = await Promise.all([
+                    fetch(`/api/check-voting?roomCode=${roomCode}`),
+                    fetch(`/api/check-chat?roomCode=${roomCode}`)
+                ]);
+
+                const voteData = await voteRes.json();
+                const chatData = await chatRes.json();
+                sessionStorage.setItem("internalNavigation", "true");
+
+                if (chatData.chatEnabled && voteData.votingEnabled) {
+                    window.location.href = "chat.html";
+                } 
+                else if (voteData.votingEnabled) {
+                    window.location.href = "voting.html";
+                }
+                else {
+                    window.location.href = "end.html";
+                }
+
+            } catch (err) {
+                console.error("Failed to check game state:", err);
+                sessionStorage.setItem("internalNavigation", "true");
+            }
           };
         };
     }
