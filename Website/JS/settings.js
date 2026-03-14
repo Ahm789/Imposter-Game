@@ -100,11 +100,13 @@ function onLoadSettings() {
   document.getElementById("players").value = localStorage.getItem("players") || "3";
   document.getElementById("imposters").value = localStorage.getItem("imposters") || "1";
   document.getElementById("genre").value = localStorage.getItem("genre") || "Random";
+  document.getElementById("public").value = localStorage.getItem("public") || "No";
 
   updateDifficultyState();
   updateImposterChance();
-  updateVotingChat();
   onLoadSettings();
+  updateVotingChat(); // must run last
+
 
   // ----- EVENT LISTENERS -----
   hintToggle.addEventListener("change", updateDifficultyState);
@@ -117,6 +119,7 @@ function onLoadSettings() {
     const hstroomCode = sessionStorage.getItem("roomCode");
     const proomCode = localStorage.getItem("proomCode");
     const roomCode = hstroomCode || proomCode;
+    const publicGame = document.getElementById("public").value; // "Yes" or "No"
 
     // Save locally
     localStorage.setItem("hintToggle", hintToggle.value);
@@ -128,31 +131,32 @@ function onLoadSettings() {
     localStorage.setItem("players", document.getElementById("players").value);
     localStorage.setItem("imposters", document.getElementById("imposters").value);
     localStorage.setItem("genre", document.getElementById("genre").value);
+    localStorage.setItem("public", document.getElementById("public").value);
 
     // Send chat data to API
     if (roomCode) {
         try {
-        const response = await fetch("/api/set-chat", {
+        const response = await fetch("/api/set-public", {
             method: "POST",
             headers: {
             "Content-Type": "application/json",
             },
             body: JSON.stringify({
             roomCode: roomCode,  // <--- Include this
-            chat: chatValue       // "Yes" or "No"
+            public: publicGame       // "Yes" or "No"
             }),
         });
 
         if (!response.ok) {
-            console.error("Failed to send chat status:", response.statusText);
+            console.error("Failed to send public status:", response.statusText);
         } else {
-            console.log("Chat status sent successfully");
+            console.log("Public status sent successfully");
         }
         } catch (err) {
-        console.error("Error sending chat status:", err);
+        console.error("Error sending public status:", err);
         }
     } else {
-        console.warn("No roomCode found, skipping chat API call");
+        console.warn("No roomCode found, skipping public API call");
     }
 
     // Navigate to previous page

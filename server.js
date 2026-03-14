@@ -64,20 +64,32 @@ io.on("connection", (socket) => {
     // Notify everyone
     io.to(roomCode).emit("phase-changed", { state: "playing", restart: true });
   });
-  socket.on("back-to-lobby", ({ roomCode, hostId }) => {
-  const room = rooms[roomCode];
-  if (!room) return;
+  // When host wants to kick a player
+  socket.on("kick-player", ({ roomCode, playerId }) => {
+    const room = rooms[roomCode];
+    if (!room || !room.players) return;
 
-  // Security: only host can trigger
-  if (room.hostId !== hostId) return;
+    // Remove player from room
+    room.players = room.players.filter(p => p.id !== playerId);
 
-  // Reset only what you need
-  room.state = "lobby";
-  room.votes = {};
-
-  // Send everyone back
-  io.to(roomCode).emit("return-to-lobby");
+    // Notify everyone in the room
+    io.to(roomCode).emit("room-update", room.players);  // update all clients
+    io.to(roomCode).emit("player-kicked", { kickedId: playerId });
 });
+  socket.on("back-to-lobby", ({ roomCode, hostId }) => {
+    const room = rooms[roomCode];
+    if (!room) return;
+
+    // Security: only host can trigger
+    if (room.hostId !== hostId) return;
+
+    // Reset only what you need
+    room.state = "lobby";
+    room.votes = {};
+
+    // Send everyone back
+    io.to(roomCode).emit("return-to-lobby");
+  });
   // server-side
     socket.on("next-phase", ({ roomCode, playerId, nextState }) => {
       const room = rooms[roomCode];
@@ -583,29 +595,29 @@ app.get("/api/active-rooms", (req, res) => {
   const activeRooms = Object.entries(rooms)
     .filter(([code, room]) => {
       const isActive = room.lastActivity && (now - room.lastActivity < 5 * 60 * 1000);
-      const chatEnabled = room.chat !== false; // exclude if chat explicitly false
+      const chatEnabled = room.public !== false; // exclude if chat explicitly false
       return isActive && chatEnabled;
     })
     .map(([code]) => code);
 
   res.json(activeRooms);
 });
-// POST /api/set-chat
-// Body: { roomCode: "ABCD", chat: "Yes" or "No" }
-app.post("/api/set-chat", (req, res) => {
-  const { roomCode, chat } = req.body;
-  if (!roomCode || typeof chat === "undefined") {
-    return res.status(400).json({ error: "Missing roomCode or chat value" });
+// POST /api/set-public
+// Body: { roomCode: "ABCD", public: "Yes" or "No" }
+app.post("/api/set-public", (req, res) => {
+  const { roomCode, public } = req.body;
+  if (!roomCode || typeof public === "undefined") {
+    return res.status(400).json({ error: "Missing roomCode or public value" });
   }
 
   if (!rooms[roomCode]) {
     rooms[roomCode] = { messages: [], lastActivity: Date.now() };
   }
 
-  rooms[roomCode].chat = chat === "Yes"; // store as boolean
+  rooms[roomCode].public = public === "Yes"; // store as boolean
   rooms[roomCode].lastActivity = Date.now(); // mark activity
 
-  console.log(`Room ${roomCode} chat set to: ${chat}`);
+  console.log(`Room ${roomCode} public set to: ${public}`);
   res.json({ success: true });
 });
 // ===================== START SERVER =====================

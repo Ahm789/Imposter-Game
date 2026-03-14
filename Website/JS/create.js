@@ -28,26 +28,26 @@ document.getElementById("hostBtn").addEventListener("click", async () => {
       localStorage.setItem("hostId", data.hostId);
       localStorage.setItem("hostName", data.name);
 
-      // Send chat to API
-      const chatValue = localStorage.getItem("chat") || "No";
+      // Send public status to API
+      const publiccode = localStorage.getItem("public") || "No";
       const roomCode = data.roomCode; // use the newly created room code
 
-      const chatRes = await fetch("/api/set-chat", {
+      const chatRes = await fetch("/api/set-public", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ roomCode, chat: chatValue })
+        body: JSON.stringify({ roomCode, public: publiccode })
       });
 
       if (!chatRes.ok) {
-        console.error("Failed to send chat status:", chatRes.statusText);
+        console.error("Failed to send public status:", chatRes.statusText);
       } else {
-        console.log("Chat status sent successfully");
+        console.log("Public status sent successfully");
       }
 
       // Redirect
       window.location.href = "game.html";
 
     } catch(err) {
-      console.error("Error creating room or sending chat:", err);
+      console.error("Error creating room or sending public status:", err);
     }
 });

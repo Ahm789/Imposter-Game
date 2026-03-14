@@ -89,6 +89,17 @@ socket.on("room-closed", () => {
     sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "join.html";
 });
+socket.on("player-kicked", ({ kickedId }) => {
+  const myId = localStorage.getItem("playerId") || localStorage.getItem("hostId");
+
+  if (kickedId === myId) {
+    sessionStorage.setItem("errorMsg", "You were kicked from the game");
+    localStorage.removeItem("proomCode");
+    localStorage.removeItem("playerId");
+    sessionStorage.setItem("internalNavigation", "true");
+    window.location.href = "join.html";
+  }
+});
 // ======================= LEAVE ROOM =======================
 
 // When player clicks back

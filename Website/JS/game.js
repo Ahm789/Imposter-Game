@@ -302,6 +302,7 @@ const isVotingPhaseShown = false; // flag to prevent multiple alerts
 function startOnlineGame() {
     const socket = io(); // connect to server
     const lobbyInfoEl = document.getElementById("lobbyInfo");
+    const togglePlayersBtn = document.getElementById("togglePlayersBtn");
     const roomDisplayEl = document.getElementById("roomDisplay");
     const playerCountEl = document.getElementById("playerCount");
     const startBtn = document.getElementById("startBtn");
@@ -318,6 +319,22 @@ function startOnlineGame() {
     }
 
     // Show lobby info
+    togglePlayersBtn.classList.remove("hidden");
+    const btn = document.getElementById("togglePlayersBtn");
+    const panel = document.getElementById("playerPanel");
+
+    btn.addEventListener("click", () => {
+
+      if(panel.classList.contains("hidden")){
+        panel.classList.remove("hidden");
+        btn.textContent = "Hide Players ▲";
+      }
+      else{
+        panel.classList.add("hidden");
+        btn.textContent = "View Players ▼";
+      }
+
+    });
     lobbyInfoEl.classList.remove("hidden");
     roomDisplayEl.textContent = roomCode;
     console.log("Joined room:", roomCode, "as host:", hostId, "Host Name:", hostName);
@@ -327,8 +344,103 @@ function startOnlineGame() {
     socket.emit("join-room", { roomCode, hostId, isHost: true });
     // Listen for room updates
     socket.on("room-update", (players) => {
-        playerCountEl.textContent = `${players.length} player(s) connected`;
-        playerCount = players.length;
+      playerCountEl.textContent = `${players.length} player(s) connected`;
+      playerCount = players.length;
+
+      // Clear previous list
+      const playerListEl = document.getElementById("playerList");
+      const panel = document.getElementById("playerPanel");
+      playerListEl.innerHTML = "";
+
+      players.forEach(p => {
+        const row = document.createElement("div");
+
+        Object.assign(row.style, {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: p.id === hostId ? "center" : "space-between",
+            padding: "8px 16px",
+            minWidth: "220px",
+            maxWidth: "300px",
+            margin: "6px auto",
+            borderRadius: "12px",
+            backgroundColor: "#f5f5f5",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+            transition: "background 0.2s ease",
+            cursor: "default"
+        });
+
+        row.addEventListener("mouseenter", () => row.style.backgroundColor = "#e0e0e0");
+        row.addEventListener("mouseleave", () => row.style.backgroundColor = "#f5f5f5");
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = p.name + (p.id === hostId ? " 👑 [HOST]" : "");
+        Object.assign(nameSpan.style, {
+            fontWeight: "600",
+            color: "#333",
+            fontSize: "15px"
+        });
+
+        row.appendChild(nameSpan);
+
+        if (p.id !== hostId) {
+          const kickBtn = document.createElement("button");
+          kickBtn.textContent = "Kick";
+
+          Object.assign(kickBtn.style, {
+              padding: "6px 12px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "white",
+              backgroundColor: "#e74c3c",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              transition: "all 0.2s ease"
+          });
+
+          // Hover effect
+          kickBtn.addEventListener("mouseenter", () => {
+              kickBtn.style.backgroundColor = "#c0392b";
+              kickBtn.style.transform = "translateY(-2px)";
+              kickBtn.style.boxShadow = "0 4px 6px rgba(0,0,0,0.15)";
+          });
+          kickBtn.addEventListener("mouseleave", () => {
+              kickBtn.style.backgroundColor = "#e74c3c";
+              kickBtn.style.transform = "translateY(0)";
+              kickBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+          });
+
+          // Click/press effect
+          kickBtn.addEventListener("mousedown", () => {
+              kickBtn.style.transform = "scale(0.97)";
+          });
+          kickBtn.addEventListener("mouseup", () => {
+              kickBtn.style.transform = "scale(1)";
+          });
+          kickBtn.addEventListener("mouseleave", () => {
+              // reset if mouse leaves while pressed
+              kickBtn.style.transform = "scale(1)";
+          });
+
+          // Actual kick action
+          kickBtn.addEventListener("click", () => {
+              socket.emit("kick-player", { roomCode, playerId: p.id });
+          });
+
+          row.appendChild(kickBtn);
+        }
+
+        playerListEl.appendChild(row);
+        // After all rows are added:
+        const totalRows = players.length; // includes host
+        if(totalRows >= 3){
+            panel.classList.add("scrollable");
+        } else {
+            panel.classList.remove("scrollable");
+        }
+      });
     });
     console.log("Socket listeners set up for lobby",hostId);
     // If host closed the room (from another tab), redirect
