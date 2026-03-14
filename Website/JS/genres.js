@@ -73,7 +73,7 @@ class GenreManager {
       // Optional: store the chosen genre for later (like hints)
       localStorage.setItem("Gamegenre", genre);
     }
-    else{
+    else if (typeof localStorage !== "undefined") {
       localStorage.setItem("Gamegenre", genre);
     }
 
