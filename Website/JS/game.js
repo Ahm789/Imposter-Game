@@ -57,23 +57,25 @@ window.addEventListener("DOMContentLoaded", () => {
     sessionStorage.setItem("internalNavigation", "true");
     window.location.href = "settings.html";
   });
-  const infoBtn = document.getElementById("infoBtn");
-  const rulesModal = document.getElementById("rulesModal");
-  const closeRules = document.getElementById("closeRules");
+  window.addEventListener("DOMContentLoaded", () => {
+    const infoBtn = document.getElementById("infoBtn");
+    const rulesModal = document.getElementById("rulesModal");
+    const closeRules = document.getElementById("closeRules");
 
-  infoBtn.addEventListener("click", () => {
-    rulesModal.classList.remove("hidden");
-  });
+    infoBtn.addEventListener("click", () => {
+      rulesModal.classList.remove("hidden");
+    });
 
-  closeRules.addEventListener("click", () => {
-    rulesModal.classList.add("hidden");
-  });
-
-  // Close modal if clicking outside the content
-  rulesModal.addEventListener("click", (e) => {
-    if (e.target === rulesModal) {
+    closeRules.addEventListener("click", () => {
       rulesModal.classList.add("hidden");
-    }
+    });
+
+    // Close modal if clicking outside the content
+    rulesModal.addEventListener("click", (e) => {
+      if (e.target === rulesModal) {
+        rulesModal.classList.add("hidden");
+      }
+    });
   });
 
   const startBtn = document.getElementById("startBtn");
@@ -485,7 +487,7 @@ function startOnlineGame() {
     // ==================== START GAME ====================
     // Start button click
     startBtn.addEventListener("click", () => {
-      if (playerCount > 3){
+      if (playerCount < 3){
           // Show it however you want
           document.getElementById("rhostName").style.display = "block";
           document.getElementById("errorMsg").textContent = "Not enough players";

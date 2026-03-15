@@ -9,6 +9,8 @@ document.addEventListener("DOMContentLoaded", () => {
   const chatGroup = document.getElementById("chatGroup");
   const votingGroup = document.getElementById("votingGroup");
 
+  const chatSelect = document.getElementById("chat");
+  const chatSettings = document.getElementById("chatSettings");
   // ----- TAB LOGIC -----
   const tabs = document.querySelectorAll(".tab-btn");
   const contents = document.querySelectorAll(".tab-content");
@@ -41,7 +43,21 @@ document.addEventListener("DOMContentLoaded", () => {
       difficulty.classList.remove("disabled-select");
     }
   }
-
+  function updateChatSettings() {
+    if(chatSelect.value === "Yes") {
+      // Enable all inputs inside chatSettings
+      chatSettings.querySelectorAll("select").forEach(el => {
+        el.disabled = false;
+        el.classList.remove("disabled-select");
+      });
+    } else {
+      // Disable all inputs inside chatSettings
+      chatSettings.querySelectorAll("select").forEach(el => {
+        el.disabled = true;
+        el.classList.add("disabled-select");
+      });
+    }
+  }
   function updateImposterChance() {
     if(noImposters.value === "No") {
       chance.disabled = true;
@@ -57,14 +73,34 @@ document.addEventListener("DOMContentLoaded", () => {
     // Disable all inputs inside chatGroup
     chatGroup.querySelectorAll("input, textarea, select, button").forEach(el => {
       el.disabled = true;
-      el.classList.add("disabled-select"); // optional styling
+      el.classList.add("disabled-select");
     });
+
+    // Also disable chatSettings
+    chatSettings.querySelectorAll("select").forEach(el => {
+      el.disabled = true;
+      el.classList.add("disabled-select");
+    });
+
   } else {
-    // Enable all inputs
+    // Enable all inputs inside chatGroup
     chatGroup.querySelectorAll("input, textarea, select, button").forEach(el => {
       el.disabled = false;
       el.classList.remove("disabled-select");
     });
+
+    // Enable/disable chatSettings based on chat toggle
+    if(chatSelect.value === "Yes") {
+      chatSettings.querySelectorAll("select").forEach(el => {
+        el.disabled = false;
+        el.classList.remove("disabled-select");
+      });
+    } else {
+      chatSettings.querySelectorAll("select").forEach(el => {
+        el.disabled = true;
+        el.classList.add("disabled-select");
+      });
+    }
   }
 }
 
@@ -101,10 +137,13 @@ function onLoadSettings() {
   document.getElementById("imposters").value = localStorage.getItem("imposters") || "1";
   document.getElementById("genre").value = localStorage.getItem("genre") || "Random";
   document.getElementById("public").value = localStorage.getItem("public") || "No";
+  document.getElementById("wordLimit").value = localStorage.getItem("wordLimit") || "unlimited";
+  document.getElementById("timeLimit").value = localStorage.getItem("timeLimit") || "unlimited";
 
   updateDifficultyState();
   updateImposterChance();
   onLoadSettings();
+  updateChatSettings();
   updateVotingChat(); // must run last
 
 
@@ -112,6 +151,7 @@ function onLoadSettings() {
   hintToggle.addEventListener("change", updateDifficultyState);
   noImposters.addEventListener("change", updateImposterChance);
   voting.addEventListener("change", updateVotingChat);
+  chatSelect.addEventListener("change", updateChatSettings);
 
   // Save on Back
   document.getElementById("backBtn").addEventListener("click", async () => {
@@ -132,6 +172,8 @@ function onLoadSettings() {
     localStorage.setItem("imposters", document.getElementById("imposters").value);
     localStorage.setItem("genre", document.getElementById("genre").value);
     localStorage.setItem("public", document.getElementById("public").value);
+    localStorage.setItem("wordLimit", document.getElementById("wordLimit").value);
+    localStorage.setItem("timeLimit", document.getElementById("timeLimit").value);
 
     // Send chat data to API
     if (roomCode) {

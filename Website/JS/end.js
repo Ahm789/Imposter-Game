@@ -58,6 +58,16 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 });
+const modal = document.getElementById("playersModal");
+
+document.getElementById("playersBtn").onclick = () => {
+  modal.classList.remove("hidden");
+};
+
+document.getElementById("closeRules").onclick = () => {
+  modal.classList.add("hidden");
+};
+
 window.addEventListener("DOMContentLoaded", () => {
   const onlineMode = localStorage.getItem("onlineMode") === "true";
   document.getElementById("hostWait").style.display = "none";
@@ -81,10 +91,117 @@ window.addEventListener("DOMContentLoaded", () => {
   const userId = hostId || playerId;
 
   socket.emit("join-room", { roomCode, userId }); 
+  socket.on("player-kicked", ({ kickedId }) => {
+  const myId = localStorage.getItem("playerId") || localStorage.getItem("hostId");
+
+  if (kickedId === myId) {
+    sessionStorage.setItem("errorMsg", "You were kicked from the game");
+    localStorage.removeItem("proomCode");
+    localStorage.removeItem("playerId");
+    sessionStorage.setItem("internalNavigation", "true");
+    window.location.href = "join.html";
+  }
+});
 
     socket.on("room-update", (players) => {
       playerCount = players.length;
       playerCountEl.textContent = `${players.length} player(s) connected`;
+      if (hostId){
+        // Clear previous list
+      const playerListEl = document.getElementById("playerList");
+      const panel = document.getElementById("playerPanel1");
+      playerListEl.innerHTML = "";
+
+      players.forEach(p => {
+        const row = document.createElement("div");
+
+        Object.assign(row.style, {
+            display: "flex",
+            alignItems: "center",
+            justifyContent: p.id === hostId ? "center" : "space-between",
+            padding: "8px 16px",
+            minWidth: "220px",
+            maxWidth: "300px",
+            margin: "6px auto",
+            borderRadius: "12px",
+            backgroundColor: "#f5f5f5",
+            boxShadow: "0 2px 6px rgba(0,0,0,0.12)",
+            transition: "background 0.2s ease",
+            cursor: "default"
+        });
+
+        row.addEventListener("mouseenter", () => row.style.backgroundColor = "#e0e0e0");
+        row.addEventListener("mouseleave", () => row.style.backgroundColor = "#f5f5f5");
+
+        const nameSpan = document.createElement("span");
+        nameSpan.textContent = p.name + (p.id === hostId ? " 👑 [HOST]" : "");
+        Object.assign(nameSpan.style, {
+            fontWeight: "600",
+            color: "#333",
+            fontSize: "15px"
+        });
+
+        row.appendChild(nameSpan);
+
+        if (p.id !== hostId) {
+          const kickBtn = document.createElement("button");
+          kickBtn.textContent = "Kick";
+
+          Object.assign(kickBtn.style, {
+              padding: "6px 12px",
+              fontSize: "14px",
+              fontWeight: "bold",
+              color: "white",
+              backgroundColor: "#e74c3c",
+              border: "none",
+              borderRadius: "8px",
+              cursor: "pointer",
+              boxShadow: "0 2px 4px rgba(0,0,0,0.1)",
+              transition: "all 0.2s ease"
+          });
+
+          // Hover effect
+          kickBtn.addEventListener("mouseenter", () => {
+              kickBtn.style.backgroundColor = "#c0392b";
+              kickBtn.style.transform = "translateY(-2px)";
+              kickBtn.style.boxShadow = "0 4px 6px rgba(0,0,0,0.15)";
+          });
+          kickBtn.addEventListener("mouseleave", () => {
+              kickBtn.style.backgroundColor = "#e74c3c";
+              kickBtn.style.transform = "translateY(0)";
+              kickBtn.style.boxShadow = "0 2px 4px rgba(0,0,0,0.1)";
+          });
+
+          // Click/press effect
+          kickBtn.addEventListener("mousedown", () => {
+              kickBtn.style.transform = "scale(0.97)";
+          });
+          kickBtn.addEventListener("mouseup", () => {
+              kickBtn.style.transform = "scale(1)";
+          });
+          kickBtn.addEventListener("mouseleave", () => {
+              // reset if mouse leaves while pressed
+              kickBtn.style.transform = "scale(1)";
+          });
+
+          // Actual kick action
+          kickBtn.addEventListener("click", () => {
+              socket.emit("kick-player", { roomCode, playerId: p.id });
+          });
+
+          row.appendChild(kickBtn);
+        }
+
+        playerListEl.appendChild(row);
+        // After all rows are added:
+        const totalRows = players.length; // includes host
+        if(totalRows >= 3){
+            panel.classList.add("scrollable");
+        } else {
+            panel.classList.remove("scrollable");
+        }
+      });
+      }
   });
   socket.on("room-closed", () => {
         if (hostId){
@@ -127,6 +244,7 @@ async function getgamestate() {
   const proomCode = localStorage.getItem("proomCode");
   const roomCode = hstroomCode || proomCode;
   let votingEnabled = false;
+  const hostId = localStorage.getItem("hostId");
 
   const res = await fetch(`/api/check-voting?roomCode=${roomCode}`);
   const data = await res.json();
@@ -134,6 +252,10 @@ async function getgamestate() {
   if (votingEnabled) {
     resultscreen();
   } else {
+    if (hostId) 
+    {
+      document.getElementById("hostButtons").classList.remove("hidden");
+    }
     normalend();
   }
 }

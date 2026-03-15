@@ -230,6 +230,10 @@ body {
   height: 40px;
   margin-bottom: 10px;
 }
+.top-buttons1 {
+  position: relative;
+  width: 100%;
+}
 
 .icon-btn {
   position: absolute;
@@ -882,6 +886,55 @@ p {
 }
 #playerPanel.scrollable {
   max-height: 160px;  /* adjust as needed to fit ~3 rows */
+  overflow-y: auto;
+  padding-right: 8px; /* optional: prevents content from touching scrollbar */
+  transition: max-height 0.2s ease;
+}
+/* =========================
+   PLAYER MODAL (inside phone container)
+========================= */
+.playermodal {
+  position: absolute;       /* inside phone-container */
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  padding-left: 60px;
+  padding-top: 300px;
+  background: rgba(0,0,0,0.45);
+  align-items: center;
+  border-radius: 30px;      /* match phone container */
+  z-index: 1000;
+}
+
+.playermodal-content {
+  position: relative;
+  width: 85%;
+  max-width: 340px;
+  max-height: 70%;
+  background: white;
+  border-radius: 16px;
+  padding: 20px;
+  overflow-y: auto;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+}
+
+.close-btn {
+  position: absolute;
+  top: 10px;
+  right: 14px;
+  font-size: 26px;
+  cursor: pointer;
+  user-select: none;
+  z-index: 1001;
+}
+#playerPanel1{
+  margin-top:10px;
+  border-top:1px solid #ddd;
+  padding-top:10px;
+}
+#playerPanel1.scrollable {
+  max-height: 300x;  /* adjust as needed to fit ~3 rows */
   overflow-y: auto;
   padding-right: 8px; /* optional: prevents content from touching scrollbar */
   transition: max-height 0.2s ease;

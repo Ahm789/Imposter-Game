@@ -397,9 +397,9 @@ app.post("/api/start-game", (req, res) => {
   room.hasImposters = imposterCount > 0;
   const votingEnabled = settings.voting || false;
   const chatEnabled = settings.chat || false;
-  console.log("Chat enabled for this game:", chatEnabled, "Voting enabled for this game:", votingEnabled);
   room.settings.chatEnabled = chatEnabled;
   room.settings.votingEnabled = votingEnabled;
+  
 
   // Use your genreManager (or similar) to get a random word
   const selectedWordObj = genreManager.getRandomWord(genre);
