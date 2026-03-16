@@ -38,6 +38,31 @@ io.on("connection", (socket) => {
     console.log(`Player ${playerId} joined room ${roomCode}`);
 
     io.to(roomCode).emit("room-update", room.players);
+
+    if (room.speakingOrder) {
+      const currentSpeakerId = room.speakingOrder[room.currentSpeakerIndex];
+      const currentSpeaker = room.players.find(p => p.id === currentSpeakerId);
+
+      if (playerId === currentSpeakerId && currentSpeaker) {
+        // First speaker joined → notify everyone
+        io.to(roomCode).emit("current-speaker", {
+          playerId: currentSpeaker.id,
+          playerName: currentSpeaker.name,
+          round: room.currentRound,
+          totalRounds: room.settings.roundCount
+        });
+      }
+
+      if (currentSpeaker) {
+        // Send state to the joining player
+        io.to(roomCode).emit("current-speaker", {
+          playerId: currentSpeaker.id,
+          playerName: currentSpeaker.name,
+          round: room.currentRound,
+          totalRounds: room.settings.roundCount
+        });
+      }
+}
   });
   socket.on("typing", ({ userId, userName, typing }) => {
     console.log(`Received typing event from ${userId}: typing=${typing}`), { userName, typing };
@@ -49,9 +74,77 @@ io.on("connection", (socket) => {
   });
   socket.on("message", ({ roomCode, userId, userName, message }) => {
     console.log(`Received message from ${userName} (${userId}) in room ${roomCode}: ${message}`);
+    
+    const room = rooms[roomCode];
+    const wordLimit = room.settings.wordLimit;
+    if (!isValidWordCount(message, wordLimit)) {
+      return socket.emit("chat-error", "Message does not meet word limit.");
+    }
+    if (room.currentRound && room.settings.roundCount !== "unlimited" && room.currentRound > room.settings.roundCount) {
+      return socket.emit("chat-error", "Round limit reached. No more messages allowed.");
+    }
+    // 3️⃣ Check turn order (only if speakingOrder exists)
+    if (room.speakingOrder) {
+      const currentSpeaker = room.speakingOrder[room.currentSpeakerIndex];
+
+      if (userId !== currentSpeaker) {
+        return socket.emit("chat-error", "It's not your turn.");
+      }
+
+      // Move to next player
+      room.currentSpeakerIndex++;
+
+      // Check if we wrapped around to the first player
+      if (room.currentSpeakerIndex >= room.speakingOrder.length) {
+        room.currentSpeakerIndex = 0;
+        room.currentRound = (room.currentRound || 1) + 1;
+
+        // Now check if we reached the max round limit
+        if (room.settings.roundCount !== "unlimited" && room.currentRound > room.settings.roundCount) {
+          // Max rounds reached → emit round-end
+          io.to(roomCode).emit("round-end", {
+            round: room.currentRound - 1, // last round completed
+            totalRounds: room.settings.roundCount
+          });
+          return; // stop further processing
+        }
+      }
+
+      // Otherwise, emit the next speaker normally
+      const nextSpeakerId = room.speakingOrder[room.currentSpeakerIndex];
+      const nextSpeaker = room.players.find(p => p.id === nextSpeakerId);
+
+      if (nextSpeaker) {
+        io.to(roomCode).emit("current-speaker", {
+          playerId: nextSpeaker.id,
+          playerName: nextSpeaker.name,
+          round: room.currentRound,
+          totalRounds: room.settings.roundCount
+        });
+      }
+    }
+
     addMessage(roomCode, userId, userName, message);
     io.to(roomCode).emit("new-message", { userId, userName, message });
   });
+  function isValidWordCount(message, limit) {
+    if (limit === "unlimited") return true;
+
+    const words = countWords(message);
+
+    // Range (ex: "2-3") → allow up to max words
+    if (limit.includes("-")) {
+      const [, max] = limit.split("-").map(Number);
+      return words <= max;
+    }
+
+    // Exact value (ex: "1")
+    return words === Number(limit);
+  }
+  function countWords(text) {
+    if (!text) return 0;
+    return text.trim().split(/\s+/).filter(Boolean).length;
+  }
   socket.on("restart-game", ({ roomCode, hostId }) => {
     const room = rooms[roomCode];
     if (!room || room.hostId !== hostId) return;
@@ -397,9 +490,27 @@ app.post("/api/start-game", (req, res) => {
   room.hasImposters = imposterCount > 0;
   const votingEnabled = settings.voting || false;
   const chatEnabled = settings.chat || false;
+  const wordLimit = settings.wordLimit || "unlimited";
+  const timeLimit = settings.timeLimit || "unlimited";
+  const roundCount = settings.roundCount || "unlimited";
+
+  room.settings.wordLimit = wordLimit;
+  room.settings.timeLimit = timeLimit;
   room.settings.chatEnabled = chatEnabled;
   room.settings.votingEnabled = votingEnabled;
-  
+  room.settings.roundCount = roundCount;
+  room.currentTimer = null; // to keep track of the timeout
+
+  // Create speaking order if timed rounds are enabled
+  if (timeLimit !== "unlimited" || roundCount !== "unlimited") {
+    const playerIds = players.map(p => p.id); // or p.socketId depending on your structure
+    room.speakingOrder = shuffleArray(playerIds);
+    room.currentSpeakerIndex = 0;
+  } else {
+    room.speakingOrder = null;
+    room.currentSpeakerIndex = null;
+  }
+  room.currentRound = 1;
 
   // Use your genreManager (or similar) to get a random word
   const selectedWordObj = genreManager.getRandomWord(genre);
@@ -459,6 +570,14 @@ app.post("/api/start-game", (req, res) => {
   }
   res.json({ success: true });
 });
+function shuffleArray(array) {
+  const arr = [...array]; // copy
+  for (let i = arr.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [arr[i], arr[j]] = [arr[j], arr[i]];
+  }
+  return arr;
+}
 // Check if voting is enabled for this room
 app.get("/api/check-voting", (req, res) => {
   const { roomCode } = req.query;
@@ -469,10 +588,17 @@ app.get("/api/check-voting", (req, res) => {
 });
 app.get("/api/check-chat", (req, res) => {
   const { roomCode } = req.query;
-  if (!roomCode || !rooms[roomCode]) return res.json({ chatEnabled: false });
+  if (!roomCode || !rooms[roomCode]) {
+    return res.json({
+      chatEnabled: false
+    });
+  }
 
   const room = rooms[roomCode];
-  res.json({ chatEnabled: room.settings.chatEnabled || false});
+
+  res.json({
+    chatEnabled: room.settings.chatEnabled || false
+  });
 });
 
 app.get("/api/get-results", (req, res) => {

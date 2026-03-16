@@ -487,7 +487,7 @@ function startOnlineGame() {
     // ==================== START GAME ====================
     // Start button click
     startBtn.addEventListener("click", () => {
-      if (playerCount < 3){
+      if (playerCount > 3){
           // Show it however you want
           document.getElementById("rhostName").style.display = "block";
           document.getElementById("errorMsg").textContent = "Not enough players";
@@ -517,6 +517,9 @@ function startOnlineGame() {
             genre: localStorage.getItem("genre"),
             voting: localStorage.getItem("voting") === "Yes",
             chat: localStorage.getItem("chat") === "Yes",
+            timeLimit: localStorage.getItem("timeLimit") || "unlimited",
+            wordLimit: localStorage.getItem("wordLimit") || "unlimited",
+            roundCount: localStorage.getItem("roundCount") || "unlimited"
           }
         })
       });

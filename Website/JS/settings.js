@@ -139,6 +139,7 @@ function onLoadSettings() {
   document.getElementById("public").value = localStorage.getItem("public") || "No";
   document.getElementById("wordLimit").value = localStorage.getItem("wordLimit") || "unlimited";
   document.getElementById("timeLimit").value = localStorage.getItem("timeLimit") || "unlimited";
+  document.getElementById("roundCount").value = localStorage.getItem("roundCount") || "unlimited";
 
   updateDifficultyState();
   updateImposterChance();
@@ -174,6 +175,7 @@ function onLoadSettings() {
     localStorage.setItem("public", document.getElementById("public").value);
     localStorage.setItem("wordLimit", document.getElementById("wordLimit").value);
     localStorage.setItem("timeLimit", document.getElementById("timeLimit").value);
+    localStorage.setItem("roundCount", document.getElementById("roundCount").value);
 
     // Send chat data to API
     if (roomCode) {

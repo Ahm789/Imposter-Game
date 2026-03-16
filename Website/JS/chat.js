@@ -199,6 +199,43 @@ document.addEventListener("DOMContentLoaded", () => {
     }
   });
   socket.emit("join-room", { roomCode, userId, userName });
+
+  socket.on("chat-error", (error) => {
+          document.getElementById("error").style.display = "block";
+          document.getElementById("errorMsg").textContent = error;
+          setTimeout(() => {
+          document.getElementById("error").style.display = "none";
+        }, 3000); // 3000ms = 3 seconds
+          return;
+  });
+
+  // Grab the element
+  const playerTurnEl = document.getElementById("PlayerTurn");
+
+  // Show current speaker
+  socket.on("current-speaker", ({ round, totalRounds, playerName }) => {
+    if (!round || !playerName) return;
+
+    // Display round / total rounds + player name
+    playerTurnEl.textContent = `🎲 Round ${round}/${totalRounds} | 🎤 ${playerName}'s turn`;
+
+    // Show the element if hidden
+    if (playerTurnEl.style.display === "none") {
+      playerTurnEl.style.display = "block";
+    }
+  });
+
+  // Show round end
+  socket.on("round-end", ({}) => {
+    playerTurnEl.textContent = `🏁 Round over!`;
+
+    // Optionally, hide it after a few seconds before next round
+    setTimeout(() => {
+      playerTurnEl.textContent = '';
+      playerTurnEl.style.display = "none";
+    }, 3000); // 3 seconds
+  });
+
   const typingUsers = new Map(); // userId -> userName
 
   socket.on("typing", ({ userId: typingUserId, userName, typing }) => {
