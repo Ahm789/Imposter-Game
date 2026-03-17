@@ -12,6 +12,8 @@ app.use(express.text({
 app.use(express.static("Website"));
 
 const crypto = require("crypto");
+const { start } = require("repl");
+const { time } = require("console");
 const rooms = {};
 
 function generateRoomCode() {
@@ -23,6 +25,80 @@ function generateRoomCode() {
 io.on("connection", (socket) => {
   console.log("Socket connected:", socket.id);
 
+  function startTurnTimer(roomCode) {
+    const room = rooms[roomCode];
+    if (!room || room.settings.timeLimit === "unlimited") return;
+
+    // Clear any previous timer just in case
+    if (room.timerInterval) clearInterval(room.timerInterval);
+
+    room.remainingTime = room.settings.timeLimit;
+    console.log(`Timer starting for ${room.speakingOrder[room.currentSpeakerIndex]}: ${room.remainingTime}s`);
+
+    room.timerInterval = setInterval(() => {
+      room.remainingTime--;
+
+      // Emit remaining time to all clients
+      io.to(roomCode).emit("timer-update", { 
+        playerId: room.speakingOrder[room.currentSpeakerIndex], 
+        remainingTime: room.remainingTime 
+      });
+
+      if (room.remainingTime <= 0) {
+        console.log(`Time's up for player ${room.speakingOrder[room.currentSpeakerIndex]}`);
+        moveToNextSpeaker(roomCode);
+      }
+    }, 1000);
+  }
+  function moveToNextSpeaker(roomCode) {
+    const room = rooms[roomCode];
+    if (!room || !room.speakingOrder) return;
+    if (!room.timerInterval && room.currentRound > room.settings.roundCount) {
+      return;
+    }
+
+    room.currentSpeakerIndex++;
+    if (room.currentSpeakerIndex >= room.speakingOrder.length) {
+      room.currentSpeakerIndex = 0;
+      room.currentRound = (room.currentRound || 1) + 1;
+
+      if (room.settings.roundCount !== "unlimited" && room.currentRound > room.settings.roundCount) {
+        console.log("🏁 Game finished");
+        io.to(roomCode).emit("timer-update", { 
+          playerId: room.speakingOrder[room.currentSpeakerIndex], 
+          remainingTime: 0
+        });
+
+        clearInterval(room.timerInterval);
+        room.timerInterval = null;
+
+        // Reset timer state cleanly
+        room.remainingTime = 0;
+
+        io.to(roomCode).emit("round-end");
+
+        return; // IMPORTANT: stop execution
+      }
+    }
+
+    // Reset timer for next player
+    room.remainingTime = room.settings.timeLimit;
+    clearInterval(room.timerInterval); // clear old interval
+    startTurnTimer(roomCode);         // start new interval
+
+    const nextSpeakerId = room.speakingOrder[room.currentSpeakerIndex];
+    const nextSpeaker = room.players.find(p => p.id == nextSpeakerId);
+
+    if (nextSpeaker) {
+      io.to(roomCode).emit("current-speaker", {
+        playerId: nextSpeaker.id,
+        playerName: nextSpeaker.name,
+        round: room.currentRound,
+        totalRounds: room.settings.roundCount,
+        remainingTime: room.remainingTime
+      });
+    }
+  }
   socket.on("join-room", ({ roomCode, playerId }) => {
     const room = rooms[roomCode];
     if (!room) return;
@@ -42,27 +118,34 @@ io.on("connection", (socket) => {
     if (room.speakingOrder) {
       const currentSpeakerId = room.speakingOrder[room.currentSpeakerIndex];
       const currentSpeaker = room.players.find(p => p.id === currentSpeakerId);
+      if (room.currentRound > room.settings.roundCount) {
+        console.log("Game already ended, not starting timer.");
+        socket.emit("round-end");
+        return;
+      }
 
       if (playerId === currentSpeakerId && currentSpeaker) {
         // First speaker joined → notify everyone
+        console.log(`Current speaker ${currentSpeaker.name} has joined. Starting timer.`);
         io.to(roomCode).emit("current-speaker", {
           playerId: currentSpeaker.id,
           playerName: currentSpeaker.name,
           round: room.currentRound,
           totalRounds: room.settings.roundCount
         });
+        startTurnTimer(roomCode);
       }
 
       if (currentSpeaker) {
-        // Send state to the joining player
-        io.to(roomCode).emit("current-speaker", {
+        // Sync this player with current speaker
+         socket.emit("current-speaker", {
           playerId: currentSpeaker.id,
           playerName: currentSpeaker.name,
           round: room.currentRound,
           totalRounds: room.settings.roundCount
         });
       }
-}
+    }
   });
   socket.on("typing", ({ userId, userName, typing }) => {
     console.log(`Received typing event from ${userId}: typing=${typing}`), { userName, typing };
@@ -72,60 +155,38 @@ io.on("connection", (socket) => {
       socket.to(roomCode).emit("typing", { userId, userName, typing });
     });
   });
+  // Message handler respecting timer
   socket.on("message", ({ roomCode, userId, userName, message }) => {
-    console.log(`Received message from ${userName} (${userId}) in room ${roomCode}: ${message}`);
-    
     const room = rooms[roomCode];
+    if (!room) return;
+
+    if (room.settings.roundCount == "unlimited" && room.settings.timeLimit == "unlimited") {
+      addMessage(roomCode, userId, userName, message);
+      return io.to(roomCode).emit("new-message", { userId, userName, message });
+    }
+
+    if (room.currentRound > room.settings.roundCount) {
+      return socket.emit("chat-error", "Game over! No more messages allowed.");
+    }
+    const currentSpeakerId = room.speakingOrder?.[room.currentSpeakerIndex];
+    if (userId !== currentSpeakerId) {
+      return socket.emit("chat-error", "It's not your turn.");
+    }
+
+    if (room.settings.timeLimit !== "unlimited" && room.remainingTime <= 0) {
+      return socket.emit("chat-error", "Time's up! You can't send a message.");
+    }
+
     const wordLimit = room.settings.wordLimit;
     if (!isValidWordCount(message, wordLimit)) {
       return socket.emit("chat-error", "Message does not meet word limit.");
     }
-    if (room.currentRound && room.settings.roundCount !== "unlimited" && room.currentRound > room.settings.roundCount) {
-      return socket.emit("chat-error", "Round limit reached. No more messages allowed.");
-    }
-    // 3️⃣ Check turn order (only if speakingOrder exists)
-    if (room.speakingOrder) {
-      const currentSpeaker = room.speakingOrder[room.currentSpeakerIndex];
-
-      if (userId !== currentSpeaker) {
-        return socket.emit("chat-error", "It's not your turn.");
-      }
-
-      // Move to next player
-      room.currentSpeakerIndex++;
-
-      // Check if we wrapped around to the first player
-      if (room.currentSpeakerIndex >= room.speakingOrder.length) {
-        room.currentSpeakerIndex = 0;
-        room.currentRound = (room.currentRound || 1) + 1;
-
-        // Now check if we reached the max round limit
-        if (room.settings.roundCount !== "unlimited" && room.currentRound > room.settings.roundCount) {
-          // Max rounds reached → emit round-end
-          io.to(roomCode).emit("round-end", {
-            round: room.currentRound - 1, // last round completed
-            totalRounds: room.settings.roundCount
-          });
-          return; // stop further processing
-        }
-      }
-
-      // Otherwise, emit the next speaker normally
-      const nextSpeakerId = room.speakingOrder[room.currentSpeakerIndex];
-      const nextSpeaker = room.players.find(p => p.id === nextSpeakerId);
-
-      if (nextSpeaker) {
-        io.to(roomCode).emit("current-speaker", {
-          playerId: nextSpeaker.id,
-          playerName: nextSpeaker.name,
-          round: room.currentRound,
-          totalRounds: room.settings.roundCount
-        });
-      }
-    }
 
     addMessage(roomCode, userId, userName, message);
     io.to(roomCode).emit("new-message", { userId, userName, message });
+
+    // Move to next speaker after successful message
+    moveToNextSpeaker(roomCode);
   });
   function isValidWordCount(message, limit) {
     if (limit === "unlimited") return true;

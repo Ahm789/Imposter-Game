@@ -302,6 +302,11 @@ function startLocalGame() {
 const isVotingPhaseShown = false; // flag to prevent multiple alerts
 // Online game logic
 function startOnlineGame() {
+    const titleSection = document.querySelector(".title-section2");
+    const computedStyle = window.getComputedStyle(titleSection);
+    const currentMargin = parseInt(computedStyle.marginTop, 10); // e.g., 60
+    titleSection.style.marginTop = (currentMargin - 30) + "px"; // reduce by 30px
+
     const socket = io(); // connect to server
     const lobbyInfoEl = document.getElementById("lobbyInfo");
     const togglePlayersBtn = document.getElementById("togglePlayersBtn");
@@ -319,6 +324,7 @@ function startOnlineGame() {
       window.location.href = "create.html";
       return;
     }
+    
 
     // Show lobby info
     togglePlayersBtn.classList.remove("hidden");

@@ -51,6 +51,10 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 const socket = io(); // connect to server
 window.addEventListener("load", async () => {
+  const titleSection = document.querySelector(".title-section");
+  const computedStyle = window.getComputedStyle(titleSection);
+  const currentMargin = parseInt(computedStyle.marginTop, 10); // e.g., 60
+  titleSection.style.marginTop = (currentMargin - 60) + "px"; // reduce by 50px
   const hstroomCode = sessionStorage.getItem("roomCode");
   const proomCode = localStorage.getItem("proomCode");
   const roomCode = hstroomCode || proomCode;
@@ -198,7 +202,8 @@ document.addEventListener("DOMContentLoaded", () => {
       socket.emit("typing", { userId, userName, typing: false });
     }
   });
-  socket.emit("join-room", { roomCode, userId, userName });
+
+  socket.emit("join-room", { roomCode, playerId: userId });
 
   socket.on("chat-error", (error) => {
           document.getElementById("error").style.display = "block";
@@ -208,16 +213,44 @@ document.addEventListener("DOMContentLoaded", () => {
         }, 3000); // 3000ms = 3 seconds
           return;
   });
+  // Listen for timer updates from the server
+  socket.on("timer-update", ({ playerId: currentPlayerId, remainingTime }) => {
+    const timerEl = document.getElementById("Timer");
 
+
+    timerEl.style.display = "block";
+
+    // Format the time nicely (MM:SS)
+    const minutes = Math.floor(remainingTime / 60);
+    const seconds = remainingTime % 60;
+    timerEl.textContent = `Time left: ${minutes}:${seconds.toString().padStart(2, "0")}`;
+    if (remainingTime <= 0) {
+      timerEl.style.display = "none"; // hide timer when time's up 
+    }
+
+    // Optional: highlight if it's the current user’s turn
+    if (currentPlayerId === userId) {
+      timerEl.style.color = "red"; // your turn
+    } else {
+      timerEl.style.color = "green"; // someone else
+    }
+  });
   // Grab the element
   const playerTurnEl = document.getElementById("PlayerTurn");
 
   // Show current speaker
   socket.on("current-speaker", ({ round, totalRounds, playerName }) => {
     if (!round || !playerName) return;
+    document.getElementById("PlayerName").style.display = "block";
+    document.getElementById("PlayerName").textContent = "You are" + ": " + userName;
+    let roundText;
+    if (totalRounds === "unlimited") {
+      roundText = `🎲 Round ${round} | 🎤 ${playerName}'s turn`;
+    } else {
+      roundText = `🎲 Round ${round}/${totalRounds} | 🎤 ${playerName}'s turn`;
+    }
 
-    // Display round / total rounds + player name
-    playerTurnEl.textContent = `🎲 Round ${round}/${totalRounds} | 🎤 ${playerName}'s turn`;
+    playerTurnEl.textContent = roundText;
 
     // Show the element if hidden
     if (playerTurnEl.style.display === "none") {
@@ -226,14 +259,10 @@ document.addEventListener("DOMContentLoaded", () => {
   });
 
   // Show round end
-  socket.on("round-end", ({}) => {
+  socket.on("round-end", () => {
+    console.log("Round ended");
+    playerTurnEl.style.display = "block";
     playerTurnEl.textContent = `🏁 Round over!`;
-
-    // Optionally, hide it after a few seconds before next round
-    setTimeout(() => {
-      playerTurnEl.textContent = '';
-      playerTurnEl.style.display = "none";
-    }, 3000); // 3 seconds
   });
 
   const typingUsers = new Map(); // userId -> userName
