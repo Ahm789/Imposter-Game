@@ -21,7 +21,6 @@ window.addEventListener("DOMContentLoaded", () => {
     const hostId = localStorage.getItem("hostId");
     const playerId = localStorage.getItem("playerId");
     const userId = hostId || playerId;
-    document.getElementById("lobbyBtn").style.display = "none";
 
     if (roomCode && playerId) {
       navigator.sendBeacon(

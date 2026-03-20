@@ -40,7 +40,6 @@ window.addEventListener("DOMContentLoaded", () => {
       localStorage.removeItem("proomCode");
       localStorage.removeItem("playerName");
       localStorage.setItem("onlineMode", false);
-
     }
 
     // HOST leaving

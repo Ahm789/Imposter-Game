@@ -15,8 +15,6 @@ window.addEventListener("DOMContentLoaded", () => {
       return;
     }
     // Immediately block backward navigation
-
-
     const hostId = localStorage.getItem("hostId");
       navigator.sendBeacon(
         "/api/close-room",
@@ -25,7 +23,6 @@ window.addEventListener("DOMContentLoaded", () => {
       localStorage.removeItem("hostId");
       sessionStorage.removeItem("roomCode");
       localStorage.removeItem("hostName");
-      localStorage.setItem("onlineMode", false);
       window.location.replace("index.html");
   });
 });

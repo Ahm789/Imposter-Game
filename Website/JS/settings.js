@@ -1,3 +1,17 @@
+const genreManager = new GenreManager();
+  const genreSelect = document.getElementById("genre");
+
+  // Get genres from your class
+  const genres = genreManager.getGenres();
+
+  // Add them to the dropdown
+  genres.forEach(genre => {
+    const option = document.createElement("option");
+    option.value = genre;
+    option.textContent = genre;
+    genreSelect.appendChild(option);
+  });
+  
 document.addEventListener("DOMContentLoaded", () => {
 
   const hintToggle = document.getElementById("hintToggle");

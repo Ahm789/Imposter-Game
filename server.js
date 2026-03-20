@@ -159,8 +159,12 @@ io.on("connection", (socket) => {
   socket.on("message", ({ roomCode, userId, userName, message }) => {
     const room = rooms[roomCode];
     if (!room) return;
+    const wordLimit = room.settings.wordLimit;
 
     if (room.settings.roundCount == "unlimited" && room.settings.timeLimit == "unlimited") {
+      if (!isValidWordCount(message, wordLimit)) {
+        return socket.emit("chat-error", "Message does not meet word limit.");
+      }
       addMessage(roomCode, userId, userName, message);
       return io.to(roomCode).emit("new-message", { userId, userName, message });
     }
@@ -177,7 +181,6 @@ io.on("connection", (socket) => {
       return socket.emit("chat-error", "Time's up! You can't send a message.");
     }
 
-    const wordLimit = room.settings.wordLimit;
     if (!isValidWordCount(message, wordLimit)) {
       return socket.emit("chat-error", "Message does not meet word limit.");
     }
