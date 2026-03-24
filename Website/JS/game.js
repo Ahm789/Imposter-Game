@@ -490,7 +490,7 @@ function startOnlineGame() {
     // ==================== START GAME ====================
     // Start button click
     startBtn.addEventListener("click", () => {
-      if (playerCount > 3){
+      if (playerCount < 1){
           // Show it however you want
           document.getElementById("rhostName").style.display = "block";
           document.getElementById("errorMsg").textContent = "Not enough players";
